@@ -7,4 +7,5 @@ pillow==12.0.0
 sqlalchemy==2.0.44
 python-multipart==0.0.20
 pydantic==2.12.2
-pip install "fastapi[standard]"
+scipy
+matplotlib

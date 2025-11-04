@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLC Blade Analysis - Main</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔬 MLC Blade Position Analysis</h1>
+            <nav>
+                <a href="/" class="nav-link active">Analysis</a>
+                <a href="/static/review.html" class="nav-link">Review</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <h2>Upload DICOM Files</h2>
+                <p class="info-text">
+                    ⚠️ All files must be from the same day and will be analyzed in chronological order (oldest first)
+                </p>
+                
+                <div class="upload-area" id="dropZone">
+                    <div class="upload-icon">📁</div>
+                    <p>Drag & drop DICOM files here or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept=".dcm" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Select Files
+                    </button>
+                </div>
+
+                <div id="fileList" class="file-list"></div>
+
+                <button id="analyzeBtn" class="btn btn-success btn-large" disabled>
+                    🚀 Run Analysis
+                </button>
+            </section>
+
+            <section id="loadingSection" class="loading-section" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing DICOM files... Please wait</p>
+            </section>
+
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <h2>Analysis Results</h2>
+                
+                <div class="summary-card">
+                    <h3>Summary</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="label">Total Blades:</span>
+                            <span id="totalBlades" class="value">-</span>
+                        </div>
+                        <div class="summary-item success">
+                            <span class="label">OK (Within Tolerance):</span>
+                            <span id="okBlades" class="value">-</span>
+                        </div>
+                        <div class="summary-item warning">
+                            <span class="label">Out of Tolerance:</span>
+                            <span id="outOfTolerance" class="value">-</span>
+                        </div>
+                        <div class="summary-item info">
+                            <span class="label">Closed/Not Detected:</span>
+                            <span id="closedBlades" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="visualization-section">
+                    <h3>Visualizations</h3>
+                    <div id="visualizationDropdown">
+                        <label for="vizSelect">Select Visualization:</label>
+                        <select id="vizSelect" class="form-select">
+                            <option value="">-- Select a visualization --</option>
+                        </select>
+                    </div>
+                    <div id="visualizationDisplay" class="visualization-display">
+                        <p class="placeholder-text">Select a visualization from the dropdown above</p>
+                    </div>
+                </div>
+
+                <div class="results-table-section">
+                    <h3>Blade Measurements</h3>
+                    <div class="table-controls">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Search blade pair...">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="OK">OK</option>
+                            <option value="OUT_OF_TOLERANCE">Out of Tolerance</option>
+                            <option value="CLOSED">Closed</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Blade Pair</th>
+                                    <th>Distance Sup (mm)</th>
+                                    <th>Distance Inf (mm)</th>
+                                    <th>Field Size (mm)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody">
+                                <!-- Results will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="saveBtn" class="btn btn-success">
+                        💾 Save to Database
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        🔄 New Analysis
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>MLC Blade Position Analysis System | © 2025</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
