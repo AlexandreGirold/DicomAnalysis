@@ -1,8 +1,8 @@
 """
-Field Edge Detection
+Field Center Detection
 
-Detects field edges/contours from a DICOM image (NO LEAVES, NO CENTER).
-Based on dicom_analysis_V2.ipynb Section 4: Contour Detection and Merging.
+Detects the center of the radiation field from a DICOM image.
+Based on dicom_analysis_V2.ipynb Section 3 & 4: Image Preprocessing and Contour Detection.
 """
 import cv2
 import numpy as np
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 
-class FieldEdgeDetector:
+class FieldCenterDetector:
     def __init__(self):
         # Detection parameters (from notebook Section 4)
         self.tolerance_threshold = 127  # Binary threshold at 50%
@@ -29,19 +29,19 @@ class FieldEdgeDetector:
             image_array = ds.pixel_array.astype(np.float32)
             
             # Extract geometric parameters
-            SAD = float(ds.RadiationMachineSAD)
-            SID = float(ds.RTImageSID)
-            scaling_factor = SAD / SID
+            SAD = float(ds.RadiationMachineSAD)  # Source to Axis Distance
+            SID = float(ds.RTImageSID)  # Source to Image Distance
+            scaling_factor = SAD / SID  # Geometric scaling factor
             
             # Extract pixel spacing
             pixel_spacing = ds.ImagePlanePixelSpacing
-            pixel_spacing_x = float(pixel_spacing[0])
-            pixel_spacing_y = float(pixel_spacing[1])
+            pixel_spacing_x = float(pixel_spacing[0])  # mm per pixel (X direction)
+            pixel_spacing_y = float(pixel_spacing[1])  # mm per pixel (Y direction)
             
             # Extract RT Image Position
             rt_image_position = ds.RTImagePosition
-            rt_image_pos_x = float(rt_image_position[0])
-            rt_image_pos_y = float(rt_image_position[1])
+            rt_image_pos_x = float(rt_image_position[0])  # mm from patient origin (X)
+            rt_image_pos_y = float(rt_image_position[1])  # mm from patient origin (Y)
             
             metadata = {
                 'SAD': SAD,
@@ -164,48 +164,92 @@ class FieldEdgeDetector:
         
         return merged_contours
     
-    def visualize_detection(self, clahe_img, binary_image, laplacian_sharpened, contours, filename):
+    def calculate_field_center(self, contours, metadata):
+        """Calculate the center of the radiation field"""
+        if not contours:
+            return None
+        
+        # Find overall bounding box of all contours
+        all_x_min = min([cv2.boundingRect(c)[0] for c in contours])
+        all_x_max = max([cv2.boundingRect(c)[0] + cv2.boundingRect(c)[2] for c in contours])
+        all_y_min = min([cv2.boundingRect(c)[1] for c in contours])
+        all_y_max = max([cv2.boundingRect(c)[1] + cv2.boundingRect(c)[3] for c in contours])
+        
+        # Calculate center in pixels
+        center_x_px = (all_x_min + all_x_max) / 2
+        center_y_px = (all_y_min + all_y_max) / 2
+        
+        # Convert to mm coordinates (patient reference frame)
+        center_x_mm = metadata['rt_image_pos_x'] + (center_x_px * metadata['pixel_spacing_x'])
+        center_y_mm = metadata['rt_image_pos_y'] + (center_y_px * metadata['pixel_spacing_y'])
+        
+        # Convert to isocenter coordinates
+        center_x_iso = center_x_mm * metadata['scaling_factor']
+        center_y_iso = center_y_mm * metadata['scaling_factor']
+        
+        # Calculate field size
+        field_width_px = all_x_max - all_x_min
+        field_height_px = all_y_max - all_y_min
+        
+        field_width_mm = field_width_px * metadata['pixel_spacing_x'] * metadata['scaling_factor']
+        field_height_mm = field_height_px * metadata['pixel_spacing_y'] * metadata['scaling_factor']
+        
+        return {
+            'center_x_px': center_x_px,
+            'center_y_px': center_y_px,
+            'center_x_mm': center_x_mm,
+            'center_y_mm': center_y_mm,
+            'center_x_iso': center_x_iso,
+            'center_y_iso': center_y_iso,
+            'field_width_px': field_width_px,
+            'field_height_px': field_height_px,
+            'field_width_mm': field_width_mm,
+            'field_height_mm': field_height_mm,
+            'bbox': (all_x_min, all_y_min, all_x_max, all_y_max)
+        }
+    
+    def visualize_detection(self, img_8bit, clahe_img, binary_image, laplacian_sharpened, contours, field_center, filename):
         """
-        Create 3-panel visualization matching notebook cell 9.
-        Shows: CLAHE Enhanced | Binary Threshold | Detected Leaf Regions
+        Create a single-image visualization that shows ONLY the field center overlay
+        (original/laplacian image with detected field boundary boxes and center crosshair).
+        This replaces the 4-panel view to keep the image focused on the center detection.
         """
-        fig, axes = plt.subplots(1, 3, figsize=(20, 5))
-        
-        # Panel 1: CLAHE Enhanced
-        axes[0].imshow(clahe_img, cmap='gray')
-        axes[0].set_title('CLAHE Enhanced', fontweight='bold')
-        axes[0].axis('off')
-        
-        # Panel 2: Binary Threshold
-        axes[1].imshow(binary_image, cmap='gray')
-        axes[1].set_title(f'Binary (Threshold={self.tolerance_threshold})', fontweight='bold')
-        axes[1].axis('off')
-        
-        # Panel 3: Detected Leaf Regions with bounding boxes
-        image_with_boxes = cv2.cvtColor(laplacian_sharpened, cv2.COLOR_GRAY2BGR)
-        for i, contour in enumerate(contours):
+        # Use the sharpened image for clearer overlay
+        image_with_center = cv2.cvtColor(laplacian_sharpened.copy(), cv2.COLOR_GRAY2BGR)
+
+        # Draw contours (field boundaries) as green rectangles
+        for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(image_with_boxes, str(i+1), (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-        
-        axes[2].imshow(image_with_boxes)
-        axes[2].set_title('Detected Leaf Regions', fontweight='bold')
-        axes[2].axis('off')
-        
-        plt.tight_layout()
-        
-        # Save figure
-        output_filename = f"field_edge_{Path(filename).stem}.png"
-        plt.savefig(output_filename, dpi=150, bbox_inches='tight')
+            cv2.rectangle(image_with_center, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        # Draw center crosshair if available
+        if field_center:
+            center_x = int(field_center['center_x_px'])
+            center_y = int(field_center['center_y_px'])
+            cross_size = 20
+            # Horizontal and vertical lines
+            cv2.line(image_with_center, (center_x - cross_size, center_y), (center_x + cross_size, center_y), (0, 0, 255), 2)
+            cv2.line(image_with_center, (center_x, center_y - cross_size), (center_x, center_y + cross_size), (0, 0, 255), 2)
+            # Small filled circle
+            cv2.circle(image_with_center, (center_x, center_y), 5, (0, 0, 255), -1)
+
+        # Optionally annotate pixel coordinates near the center
+        if field_center:
+            text = f"u={field_center['center_x_px']:.1f}px, v={field_center['center_y_px']:.1f}px"
+            cv2.putText(image_with_center, text, (max(10, center_x + 10), max(20, center_y - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
+
+        # Save the single-image visualization
+        output_filename = f"field_center_{Path(filename).stem}.png"
+        cv2.imwrite(output_filename, image_with_center)
         print(f"Visualization saved to: {output_filename}")
-        plt.close()
-        
+
         return output_filename
     
     def process_image(self, filepath):
-        """Process a single DICOM image to detect field edges"""
+        """Process a single DICOM image to detect field center"""
         print(f"\n{'='*60}")
-        print(f"Field Edge Detection: {Path(filepath).name}")
+        print(f"Field Center Detection: {Path(filepath).name}")
         print(f"{'='*60}")
         
         # Load image and metadata
@@ -225,17 +269,30 @@ class FieldEdgeDetector:
         merged_contours = self.merge_nearby_contours(contours, binary_image)
         final_contours = [c for c in merged_contours if cv2.contourArea(c) > self.min_area]
         print(f"After merging: {len(final_contours)} contours")
-        print(f"Settings: threshold={self.tolerance_threshold}, min_area={self.min_area}, merge_distance={self.merge_distance_px}px")
+        
+        # Calculate field center
+        field_center = self.calculate_field_center(final_contours, metadata)
+        
+        if field_center:
+            print(f"\nField Center (Image Coordinates):")
+            print(f"  u: {field_center['center_x_px']:.2f} px")
+            print(f"  v: {field_center['center_y_px']:.2f} px")
+            print(f"\nField Center (Isocenter):")
+            print(f"  X: {field_center['center_x_iso']:.2f} mm")
+            print(f"  Y: {field_center['center_y_iso']:.2f} mm")
+            print(f"  Field Size: {field_center['field_width_mm']:.2f} × {field_center['field_height_mm']:.2f} mm")
+        else:
+            print("\n⚠️  Could not detect field center")
         
         # Create visualization
-        viz_filename = self.visualize_detection(clahe_img, binary_image, laplacian_sharpened, 
-                                                final_contours, Path(filepath).name)
+        viz_filename = self.visualize_detection(img_8bit, clahe_img, binary_image, 
+                                                laplacian_sharpened, final_contours, 
+                                                field_center, Path(filepath).name)
         
         print(f"{'='*60}\n")
         
         return {
-            'contour_count': len(final_contours),
-            'contours': final_contours,
+            'field_center': field_center,
             'metadata': metadata,
             'visualization': viz_filename
         }
@@ -246,16 +303,16 @@ def main():
     import sys
     
     if len(sys.argv) < 2:
-        print("Usage: python field_edge_detection.py <dicom_file>")
+        print("Usage: python field_center_detection.py <dicom_file>")
         sys.exit(1)
     
-    detector = FieldEdgeDetector()
+    detector = FieldCenterDetector()
     result = detector.process_image(sys.argv[1])
     
-    if result:
-        print(f"✅ Field edge detection completed successfully - {result['contour_count']} regions detected")
+    if result and result['field_center']:
+        print("✅ Field center detection completed successfully")
     else:
-        print("❌ Field edge detection failed")
+        print("❌ Field center detection failed")
 
 
 if __name__ == "__main__":
