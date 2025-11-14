@@ -3,24 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLC Blade Analysis - Main</title>
+    <title>Quality Control Tests</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🔬 MLC Blade Position Analysis</h1>
+            <h1>Quality Control Tests</h1>
             <nav>
-                <a href="/" class="nav-link active">Analysis</a>
+                <a href="/" class="nav-link active">Tests</a>
                 <a href="/static/review.html" class="nav-link">Review</a>
             </nav>
         </header>
 
         <main>
-            <section class="upload-section">
-                <h2>Upload DICOM Files</h2>
+            <!-- Test Selection Section -->
+            <section class="test-selection-section">
+                <h2>Available Tests</h2>
+                
+                <div id="testList" class="test-list">
+                    <div class="loading-placeholder">
+                        <div class="spinner"></div>
+                        <p>Loading tests...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Test Execution Modal -->
+            <div id="testModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">Test Execution</h3>
+                        <span class="close" onclick="closeTestModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div id="modalDescription" class="test-description"></div>
+                        
+                        <form id="testForm">
+                            <div id="formFields"></div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="closeTestModal()">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Execute Test
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Results Section -->
+            <section id="testResultsSection" class="test-results-section" style="display: none;">
+                <h2>Test Results</h2>
+                
+                <div class="result-header">
+                    <h3 id="resultTestName">Test Name</h3>
+                    <div id="resultOverallStatus" class="overall-status"></div>
+                </div>
+                
+                <div class="result-details">
+                    <div class="result-card">
+                        <h4>Results</h4>
+                        <div id="testResults" class="results-grid"></div>
+                    </div>
+                    
+                    <div id="testVisualizations" class="result-card" style="display: none;">
+                        <h4>Visualizations</h4>
+                        <div id="visualizationsList" class="visualizations-grid"></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="newTest()">Run Another Test</button>
+                    <button class="btn btn-secondary" onclick="printResults()">Print Results</button>
+                </div>
+            </section>
+
+            <!-- DICOM Analysis Section (Hidden by default) -->
+            <section id="dicomSection" class="upload-section" style="display: none;">
+                <h2>DICOM Analysis</h2>
                 <p class="info-text">
-                    ⚠️ All files must be from the same day and will be analyzed in chronological order (oldest first)
+                    Upload DICOM files for MLC blade analysis
                 </p>
                 
                 <div class="upload-area" id="dropZone">
@@ -35,98 +102,29 @@
                 <div id="fileList" class="file-list"></div>
 
                 <button id="analyzeBtn" class="btn btn-success btn-large" disabled>
-                    🚀 Run Analysis
+                    � Run Analysis
                 </button>
             </section>
 
             <section id="loadingSection" class="loading-section" style="display: none;">
                 <div class="spinner"></div>
-                <p>Processing DICOM files... Please wait</p>
-            </section>
-
-            <section id="resultsSection" class="results-section" style="display: none;">
-                <h2>Analysis Results</h2>
-                
-                <div class="summary-card">
-                    <h3>Summary</h3>
-                    <div class="summary-grid">
-                        <div class="summary-item">
-                            <span class="label">Total Blades:</span>
-                            <span id="totalBlades" class="value">-</span>
-                        </div>
-                        <div class="summary-item success">
-                            <span class="label">OK (Within Tolerance):</span>
-                            <span id="okBlades" class="value">-</span>
-                        </div>
-                        <div class="summary-item warning">
-                            <span class="label">Out of Tolerance:</span>
-                            <span id="outOfTolerance" class="value">-</span>
-                        </div>
-                        <div class="summary-item info">
-                            <span class="label">Closed/Not Detected:</span>
-                            <span id="closedBlades" class="value">-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="visualization-section">
-                    <h3>Visualizations</h3>
-                    <div id="visualizationDropdown">
-                        <label for="vizSelect">Select Visualization:</label>
-                        <select id="vizSelect" class="form-select">
-                            <option value="">-- Select a visualization --</option>
-                        </select>
-                    </div>
-                    <div id="visualizationDisplay" class="visualization-display">
-                        <p class="placeholder-text">Select a visualization from the dropdown above</p>
-                    </div>
-                </div>
-
-                <div class="results-table-section">
-                    <h3>Blade Measurements</h3>
-                    <div class="table-controls">
-                        <input type="text" id="searchInput" class="search-input" placeholder="Search blade pair...">
-                        <select id="statusFilter" class="form-select">
-                            <option value="">All Statuses</option>
-                            <option value="OK">OK</option>
-                            <option value="OUT_OF_TOLERANCE">Out of Tolerance</option>
-                            <option value="CLOSED">Closed</option>
-                        </select>
-                    </div>
-                    <div class="table-wrapper">
-                        <table id="resultsTable">
-                            <thead>
-                                <tr>
-                                    <th>Blade Pair</th>
-                                    <th>Distance Sup (mm)</th>
-                                    <th>Distance Inf (mm)</th>
-                                    <th>Field Size (mm)</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resultsTableBody">
-                                <!-- Results will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button id="saveBtn" class="btn btn-success">
-                        💾 Save to Database
-                    </button>
-                    <button class="btn btn-secondary" onclick="location.reload()">
-                        🔄 New Analysis
-                    </button>
-                </div>
+                <p>Processing... Please wait</p>
             </section>
         </main>
 
         <footer>
-            <p>MLC Blade Position Analysis System | © 2025</p>
+            <p>Quality Control Test System | © 2025</p>
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <!-- Modular JS Files -->
+    <script src="/static/js/config.js?v=2"></script>
+    <script src="/static/js/state.js?v=2"></script>
+    <script src="/static/js/ui.js?v=2"></script>
+    <script src="/static/js/test-list.js?v=2"></script>
+    <script src="/static/js/form-builder.js?v=2"></script>
+    <script src="/static/js/test-execution.js?v=2"></script>
+    <script src="/static/js/results-display.js?v=2"></script>
+    <script src="/static/js/main.js?v=2"></script>
 </body>
 </html>

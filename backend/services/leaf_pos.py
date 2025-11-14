@@ -127,11 +127,11 @@ class MLCBladeAnalyzer:
         return max_val - image
     
     def find_edges(self, image):
-        """Apply edge detection (equivalent to ImageJ Find Edges)"""
-        # Using Sobel operator for edge detection
-        sobelx = ndimage.sobel(image, axis=1)
-        sobely = ndimage.sobel(image, axis=0)
-        edges = np.hypot(sobelx, sobely)
+        """Apply edge detection using first derivative (gradient)"""
+        # Using first derivative for edge detection
+        grad_x = np.gradient(image, axis=1)  # First derivative in x direction
+        grad_y = np.gradient(image, axis=0)  # First derivative in y direction
+        edges = np.hypot(grad_x, grad_y)     # Magnitude of first derivatives
         return edges
     
     def analyze_blade_positions(self, image, start_u, end_u, step, initial_pair):
