@@ -20,6 +20,14 @@ function buildFormFields(fields) {
                 return buildSelectField(field);
             case 'file':
                 return buildFileField(field);
+            case 'section':
+                return buildSectionField(field);
+            case 'table':
+                return buildTableField(field);
+            case 'info':
+                return buildInfoField(field);
+            case 'hidden':
+                return ''; // Hidden fields are managed by table inputs
             default:
                 return '';
         }
@@ -119,4 +127,79 @@ function buildFileField(field) {
             ${field.description ? `<div class="field-description">${field.description}</div>` : ''}
         </div>
     `;
+}
+
+function buildSectionField(field) {
+    return `
+        <div class="form-section">
+            <h3 class="section-title">${field.label}</h3>
+            ${field.description ? `<p class="section-description">${field.description}</p>` : ''}
+        </div>
+    `;
+}
+
+function buildInfoField(field) {
+    return `
+        <div class="form-info">
+            <p>${field.label}</p>
+        </div>
+    `;
+}
+
+function buildTableField(field) {
+    if (!field.columns || !field.rows) {
+        return '';
+    }
+    
+    let tableHtml = `
+        <div class="form-group table-group">
+            <label>${field.label}</label>
+            ${field.description ? `<div class="field-description">${field.description}</div>` : ''}
+            <div class="table-wrapper">
+                <table class="measurement-table">
+                    <thead>
+                        <tr>
+    `;
+    
+    // Build header
+    field.columns.forEach(col => {
+        tableHtml += `<th>${col.label}</th>`;
+    });
+    tableHtml += `</tr></thead><tbody>`;
+    
+    // Build rows
+    field.rows.forEach(row => {
+        tableHtml += `<tr>`;
+        
+        // First column is the row label
+        tableHtml += `<td class="row-label">${row.measure}</td>`;
+        
+        // Then the input fields
+        row.fields.forEach((fieldName, idx) => {
+            const col = field.columns[idx + 1]; // +1 because first column is label
+            tableHtml += `
+                <td>
+                    <input type="number" 
+                           id="${fieldName}" 
+                           name="${fieldName}" 
+                           ${field.required ? 'required' : ''} 
+                           step="${col.step || '0.001'}" 
+                           value="${field.required ? '' : '0'}"
+                           class="table-input"
+                           placeholder="0.000">
+                </td>
+            `;
+        });
+        
+        tableHtml += `</tr>`;
+    });
+    
+    tableHtml += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    return tableHtml;
 }

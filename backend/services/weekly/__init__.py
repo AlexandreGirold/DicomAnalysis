@@ -1,18 +1,31 @@
 """
 Weekly Tests Package
 Collection of weekly quality control tests for medical equipment
+all the weekly tests, this is the same for monthly and daily and if added later yearly
 """
+from .niveau_helium import NiveauHeliumTest, test_helium_level
+import sys
+import os
+services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if services_dir not in sys.path:
+    sys.path.insert(0, services_dir)
 
-# Weekly test registry
+from basic_tests.mlc_leaf_jaw import MLCLeafJawTest, test_mlc_leaf_jaw
+
+# THIS IS WHERE YOU ADD NEW WEEKLY TESTS -> 
 WEEKLY_TESTS = {
-    # Add weekly tests here as they are implemented
-    # Example:
-    # 'test_name': {
-    #     'class': TestClass,
-    #     'function': test_function,
-    #     'description': 'Test description',
-    #     'category': 'weekly'
-    # }
+    'niveau_helium': {
+        'class': NiveauHeliumTest,
+        'function': test_helium_level,
+        'description': 'ANSM - Test du niveau d\'hélium - Doit être supérieur à 65%',
+        'category': 'weekly'
+    },
+    'mlc_leaf_jaw': {
+        'class': MLCLeafJawTest,
+        'function': test_mlc_leaf_jaw,
+        'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
+        'category': 'weekly'
+    }
 }
 
 def get_weekly_tests():

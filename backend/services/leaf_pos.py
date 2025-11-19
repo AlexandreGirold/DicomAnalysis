@@ -44,7 +44,7 @@ class MLCBladeAnalyzer:
         self.pixel_spacing_y = None  # mm per pixel at image plane
         
         # Tolerance settings (user-adjustable)
-        self.expected_field_size = 20.0  # mm - Expected field size when fully open
+        self.expected_field_size = 40.0  # mm - Expected field size when fully open
         self.field_size_tolerance = 1.0  # mm - Tolerance for field size
         self.edge_detection_threshold = 0.5  # 0-1: fraction of max-min for edge detection (0.5 = median)
         self.min_blade_separation = 23  # pixels - minimum separation between opposing blades (~5mm) previously 23

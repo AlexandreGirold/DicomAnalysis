@@ -4,10 +4,6 @@ Collection of quality control tests for medical equipment
 """
 
 from .base_test import BaseTest
-from .niveau_helium import NiveauHeliumTest, test_helium_level
-from .position_table import PositionTableV2Test, test_position_table_v2
-from .alignement_laser import AlignementLaserTest, test_alignement_laser
-from .mlc_leaf_jaw import MLCLeafJawTest, test_mlc_leaf_jaw
 
 # Import daily, weekly, and monthly tests
 import sys
@@ -18,10 +14,9 @@ services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if services_dir not in sys.path:
     sys.path.insert(0, services_dir)
 
-# Manually build DAILY_TESTS dictionary to avoid circular imports
+# Import tests from daily, weekly, and monthly packages
 DAILY_TESTS = {}
 try:
-    # Import the safety systems test directly
     from services.daily.safety_systems import SafetySystemsTest, test_safety_systems
     DAILY_TESTS['safety_systems'] = {
         'class': SafetySystemsTest,
@@ -32,48 +27,24 @@ try:
 except ImportError as e:
     print(f"[DEBUG] Failed to import safety_systems: {e}")
 
-WEEKLY_TESTS = {}
-MONTHLY_TESTS = {}
+try:
+    from services.weekly import WEEKLY_TESTS
+except ImportError as e:
+    print(f"[DEBUG] Failed to import WEEKLY_TESTS: {e}")
+    WEEKLY_TESTS = {}
+
+try:
+    from services.monthly import MONTHLY_TESTS
+except ImportError as e:
+    print(f"[DEBUG] Failed to import MONTHLY_TESTS: {e}")
+    MONTHLY_TESTS = {}
 
 __all__ = [
-    'BaseTest',
-    'NiveauHeliumTest',
-    'PositionTableV2Test', 
-    'AlignementLaserTest',
-    'MLCLeafJawTest',
-    'test_helium_level',
-    'test_position_table_v2',
-    'test_alignement_laser',
-    'test_mlc_leaf_jaw'
+    'BaseTest'
 ]
 
 # Test registry for easy access
-AVAILABLE_TESTS = {
-    'niveau_helium': {
-        'class': NiveauHeliumTest,
-        'function': test_helium_level,
-        'description': 'Test du niveau d\'hélium - Doit être supérieur à 65%',
-        'category': 'basic'
-    },
-    'position_table_v2': {
-        'class': PositionTableV2Test,
-        'function': test_position_table_v2,
-        'description': 'Test de positionnement de la table',
-        'category': 'basic'
-    },
-    'alignement_laser': {
-        'class': AlignementLaserTest,
-        'function': test_alignement_laser,
-        'description': 'Test d\'alignement des marqueurs laser',
-        'category': 'basic'
-    },
-    'mlc_leaf_jaw': {
-        'class': MLCLeafJawTest,
-        'function': test_mlc_leaf_jaw,
-        'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
-        'category': 'basic'
-    }
-}
+AVAILABLE_TESTS = {}
 
 # Add daily, weekly, and monthly tests to registry
 AVAILABLE_TESTS.update(DAILY_TESTS)

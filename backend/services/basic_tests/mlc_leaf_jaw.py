@@ -206,13 +206,13 @@ class MLCLeafJawTest(BaseTest):
         if image_number == 1:
             return 'center_detection'
         elif image_number == 2:
-            return 'leaf_edges'
-        elif image_number == 3:
-            return 'blade_straightness'  # Changed from leaf_alignment to blade_straightness
-        elif image_number in [4, 5]:
-            return 'leaf_position'
-        elif image_number == 6:
             return 'jaw_position'
+        elif image_number == 3:
+            return 'leaf_position'
+        elif image_number == 4:
+            return 'leaf_position'
+        elif image_number == 5:
+            return 'blade_straightness'  # Use image 5 for leaf alignment
         else:
             # Default to leaf position for any additional images
             return 'leaf_position'
@@ -233,20 +233,35 @@ class MLCLeafJawTest(BaseTest):
             return None
     
     def _analyze_center_detection(self, filepath):
-        """Analyze center detection (U and V coordinates)"""
-        logger.info("Performing center detection analysis")
+        """Analyze center detection (U and V coordinates) using first derivative edge detection"""
+        logger.info("Performing center detection analysis with edge detection")
         original_image, ds = self.analyzer.load_dicom_image(filepath)
         if original_image is None:
             return None
+        
+        # Apply edge detection using first derivative (gradient)
+        image = self.analyzer.invert_image(original_image)
+        edges = self.analyzer.find_edges(image)
+        
+        # Calculate threshold from edge-detected image
+        roi = edges[437:867, 5:1023]  # Same ROI as blade position detection
+        max_val = np.max(roi)
+        min_val = np.min(roi)
+        edge_threshold = min_val + (max_val - min_val) * self.analyzer.edge_detection_threshold
         
         # Use current center coordinates
         u_center = self.analyzer.center_u
         v_center = self.analyzer.center_v
         
+        # Count edge pixels above threshold in ROI
+        edge_pixels = np.sum(roi > edge_threshold)
+        
         return {
             'type': 'center_detection',
             'u_center_px': u_center,
             'v_center_px': v_center,
+            'edge_threshold': float(edge_threshold),
+            'edge_pixels': int(edge_pixels),
             'status': 'OK'
         }
     
@@ -549,8 +564,8 @@ class MLCLeafJawTest(BaseTest):
         expected_jaw_pos = 100.0  # mm
         jaw_tolerance = 2.0  # mm
         
-        x1_status = 'OK' if x1_mm and abs(abs(x1_mm) - expected_jaw_pos) < jaw_tolerance else 'FAIL'
-        x2_status = 'OK' if x2_mm and abs(abs(x2_mm) - expected_jaw_pos) < jaw_tolerance else 'FAIL'
+        x1_status = 'PASS' if x1_mm and abs(abs(x1_mm) - expected_jaw_pos) < jaw_tolerance else 'FAIL'
+        x2_status = 'PASS' if x2_mm and abs(abs(x2_mm) - expected_jaw_pos) < jaw_tolerance else 'FAIL'
         
         return {
             'type': 'jaw_position',
@@ -560,7 +575,7 @@ class MLCLeafJawTest(BaseTest):
             'x2_mm': round(x2_mm, 2) if x2_mm else None,
             'x1_status': x1_status,
             'x2_status': x2_status,
-            'status': 'OK' if x1_status == 'OK' and x2_status == 'OK' else 'FAIL'
+            'status': 'PASS' if x1_status == 'PASS' and x2_status == 'PASS' else 'FAIL'
         }
     
     def _generate_visualizations(self):
@@ -752,17 +767,17 @@ class MLCLeafJawTest(BaseTest):
                 axes[1, 1].text(0.5, 0.7, 'Jaw Positions:', ha='center', va='center', fontsize=14, fontweight='bold', transform=axes[1, 1].transAxes)
                 axes[1, 1].text(0.5, 0.6, f'X1 (Left): {file_results["x1_mm"]}mm [{file_results["x1_status"]}]', 
                               ha='center', va='center', fontsize=12, 
-                              color='green' if file_results["x1_status"] == 'OK' else 'red',
+                              color='green' if file_results["x1_status"] == 'PASS' else 'red',
                               transform=axes[1, 1].transAxes)
                 axes[1, 1].text(0.5, 0.5, f'X2 (Right): {file_results["x2_mm"]}mm [{file_results["x2_status"]}]', 
                               ha='center', va='center', fontsize=12,
-                              color='green' if file_results["x2_status"] == 'OK' else 'red',
+                              color='green' if file_results["x2_status"] == 'PASS' else 'red',
                               transform=axes[1, 1].transAxes)
                 axes[1, 1].text(0.5, 0.4, f'Expected: ±100mm ±2mm', 
                               ha='center', va='center', fontsize=10, color='gray', transform=axes[1, 1].transAxes)
                 axes[1, 1].text(0.5, 0.3, f'Overall: {file_results["status"]}', 
                               ha='center', va='center', fontsize=14, fontweight='bold',
-                              color='green' if file_results["status"] == 'OK' else 'red',
+                              color='green' if file_results["status"] == 'PASS' else 'red',
                               transform=axes[1, 1].transAxes)
                 axes[1, 1].axis('off')
             

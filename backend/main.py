@@ -13,11 +13,9 @@ import pydicom
 from datetime import datetime
 import database as db
 
-# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Add services directory to path
 services_dir = os.path.join(os.path.dirname(__file__), 'services')
 sys.path.insert(0, services_dir)
 logger.info(f"Added services directory to path: {services_dir}")
@@ -30,22 +28,17 @@ except ImportError as e:
     logger.error(traceback.format_exc())
     raise
 
-# Import basic tests
+# Import basic tests (depricated)
 try:
     from basic_tests import (
         get_available_tests,
         create_test_instance,
-        execute_test,
-        NiveauHeliumTest,
-        PositionTableV2Test,
-        AlignementLaserTest,
-        MLCLeafJawTest
+        execute_test
     )
     logger.info("Successfully imported basic tests")
 except ImportError as e:
     logger.error(f"Failed to import basic tests: {e}")
     logger.error(traceback.format_exc())
-    # Don't raise - basic tests are optional
 
 app = FastAPI(title="DICOM MLC Blade Analyzer")
 
@@ -636,6 +629,124 @@ async def execute_alignement_laser(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/basic-tests/quasar")
+async def execute_quasar_test(data: dict):
+    """
+    Execute QUASAR test (Latence du gating et Précision)
+    Expected data: {
+        "operator": str,
+        "latence_status": "PASS"/"FAIL"/"SKIP",
+        "latence_reason": str (optional, required if SKIP),
+        "coord_correction": float (optional),
+        "x_value": float (optional),
+        "y_value": float (optional),
+        "z_value": float (optional),
+        "test_date": str (optional),
+        "notes": str (optional)
+    }
+    """
+    logger.info("[BASIC-TESTS] Executing QUASAR test")
+    try:
+        # Validate required fields
+        if 'operator' not in data:
+            raise HTTPException(status_code=400, detail="operator is required")
+        if 'latence_status' not in data:
+            raise HTTPException(status_code=400, detail="latence_status is required")
+        
+        # Parse test date if provided
+        test_date = None
+        if 'test_date' in data and data['test_date']:
+            try:
+                test_date = datetime.fromisoformat(data['test_date'].replace('Z', '+00:00'))
+            except ValueError:
+                test_date = datetime.strptime(data['test_date'], '%Y-%m-%d')
+        
+        # Execute test
+        result = execute_test(
+            'quasar',
+            operator=data['operator'],
+            latence_status=data['latence_status'],
+            latence_reason=data.get('latence_reason'),
+            coord_correction=float(data['coord_correction']) if data.get('coord_correction') else None,
+            x_value=float(data['x_value']) if data.get('x_value') else None,
+            y_value=float(data['y_value']) if data.get('y_value') else None,
+            z_value=float(data['z_value']) if data.get('z_value') else None,
+            test_date=test_date,
+            notes=data.get('notes')
+        )
+        
+        logger.info(f"[BASIC-TESTS] QUASAR test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except ValueError as e:
+        logger.warning(f"[BASIC-TESTS] Invalid data: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[BASIC-TESTS] Error executing test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/basic-tests/indice-quality")
+async def execute_indice_quality_test(data: dict):
+    """
+    Execute Indice de Qualité test (D10/D20 et D5/D15)
+    Expected data: {
+        "operator": str,
+        "d10_m1": float, "d10_m2": float, "d10_m3": float,
+        "d20_m1": float, "d20_m2": float, "d20_m3": float,
+        "d5_m1": float (optional, default 0), "d5_m2": float (optional), "d5_m3": float (optional),
+        "d15_m1": float (optional, default 0), "d15_m2": float (optional), "d15_m3": float (optional),
+        "test_date": str (optional),
+        "notes": str (optional)
+    }
+    """
+    logger.info("[BASIC-TESTS] Executing Indice de Qualité test")
+    try:
+        # Validate required fields
+        required_fields = ['operator', 'd10_m1', 'd10_m2', 'd10_m3', 'd20_m1', 'd20_m2', 'd20_m3']
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"{field} is required")
+        
+        # Parse test date if provided
+        test_date = None
+        if 'test_date' in data and data['test_date']:
+            try:
+                test_date = datetime.fromisoformat(data['test_date'].replace('Z', '+00:00'))
+            except ValueError:
+                test_date = datetime.strptime(data['test_date'], '%Y-%m-%d')
+        
+        # Execute test
+        result = execute_test(
+            'indice_quality',
+            operator=data['operator'],
+            d10_m1=float(data['d10_m1']),
+            d10_m2=float(data['d10_m2']),
+            d10_m3=float(data['d10_m3']),
+            d20_m1=float(data['d20_m1']),
+            d20_m2=float(data['d20_m2']),
+            d20_m3=float(data['d20_m3']),
+            d5_m1=float(data.get('d5_m1', 0)),
+            d5_m2=float(data.get('d5_m2', 0)),
+            d5_m3=float(data.get('d5_m3', 0)),
+            d15_m1=float(data.get('d15_m1', 0)),
+            d15_m2=float(data.get('d15_m2', 0)),
+            d15_m3=float(data.get('d15_m3', 0)),
+            test_date=test_date,
+            notes=data.get('notes')
+        )
+        
+        logger.info(f"[BASIC-TESTS] Indice de Qualité test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except ValueError as e:
+        logger.warning(f"[BASIC-TESTS] Invalid data: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[BASIC-TESTS] Error executing test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/basic-tests/safety-systems")
 async def execute_safety_systems(data: dict):
     """
@@ -842,8 +953,9 @@ async def execute_mlc_leaf_jaw(
                     logger.warning(f"[BASIC-TESTS] Invalid date format: {test_date}")
         
         # Create test instance and execute
-        mlc_test = MLCLeafJawTest()
-        result = mlc_test.execute(
+        # Use the generic test execution function
+        result = execute_test(
+            'mlc_leaf_jaw',
             files=file_paths,
             operator=operator,
             test_date=parsed_test_date

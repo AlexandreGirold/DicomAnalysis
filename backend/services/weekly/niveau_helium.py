@@ -11,7 +11,7 @@ class NiveauHeliumTest(BaseTest):
     """
     Test for checking helium level
     The helium level must be above 65% to pass
-    """
+    """ 
     
     def __init__(self):
         super().__init__(

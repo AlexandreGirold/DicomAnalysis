@@ -203,12 +203,14 @@ class FieldEdgeDetector:
         return output_filename
     
     def process_image(self, filepath):
-        """Process a single DICOM image to detect field edges"""
+        """Process a single DICOM image to detect field edges
+         filepath: Path to the DICOM file
+         returns: Dictionary with detection results and metadata
+        """
         print(f"\n{'='*60}")
         print(f"Field Edge Detection: {Path(filepath).name}")
         print(f"{'='*60}")
         
-        # Load image and metadata
         image_array, ds, metadata = self.load_dicom_image(filepath)
         if image_array is None:
             return None
