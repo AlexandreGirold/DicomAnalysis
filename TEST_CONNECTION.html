@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 MLC Blade Analysis - Connection Test</h1>
+    
+    <p><strong>Instructions:</strong></p>
+    <ol>
+        <li>Make sure the backend server is running (start_app.bat)</li>
+        <li>Open this file at: <code>http://localhost:8000/static/TEST_CONNECTION.html</code></li>
+        <li>Click the button below to test the API connection</li>
+    </ol>
+    
+    <button onclick="testConnection()">🧪 Test API Connection</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testConnection() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing...</p>';
+            
+            const tests = [];
+            
+            // Test 1: Root endpoint
+            try {
+                const response = await fetch('/');
+                const isHTML = response.headers.get('content-type').includes('text/html');
+                tests.push({
+                    name: 'Root Endpoint (/)',
+                    success: response.ok && isHTML,
+                    details: `Status: ${response.status}, Type: ${isHTML ? 'HTML (Frontend)' : 'JSON (API)'}`
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Root Endpoint (/)',
+                    success: false,
+                    details: `Error: ${error.message}`
+                });
+            }
+            
+            // Test 2: Database stats
+            try {
+                const response = await fetch('/database/stats');
+                const data = await response.json();
+                tests.push({
+                    name: 'Database Stats (/database/stats)',
+                    success: response.ok,
+                    details: `Total tests: ${data.total_tests || 0}, Total measurements: ${data.total_blade_measurements || 0}`
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Database Stats',
+                    success: false,
+                    details: `Error: ${error.message}`
+                });
+            }
+            
+            // Test 3: Get tests
+            try {
+                const response = await fetch('/tests?limit=5');
+                const data = await response.json();
+                tests.push({
+                    name: 'Get Tests (/tests)',
+                    success: response.ok,
+                    details: `Found ${data.count || 0} tests`
+                });
+            } catch (error) {
+                tests.push({
+                    name: 'Get Tests',
+                    success: false,
+                    details: `Error: ${error.message}`
+                });
+            }
+            
+            // Display results
+            let html = '<h2>Test Results:</h2>';
+            tests.forEach(test => {
+                const className = test.success ? 'success' : 'error';
+                const icon = test.success ? '✅' : '❌';
+                html += `
+                    <div class="test ${className}">
+                        <strong>${icon} ${test.name}</strong><br>
+                        <small>${test.details}</small>
+                    </div>
+                `;
+            });
+            
+            const allSuccess = tests.every(t => t.success);
+            if (allSuccess) {
+                html += '<div class="test success"><strong>🎉 All tests passed! The application is ready to use.</strong></div>';
+            } else {
+                html += '<div class="test error"><strong>⚠️ Some tests failed. Make sure the server is running on port 8000.</strong></div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 500);
+        });
+    </script>
+</body>
+</html>

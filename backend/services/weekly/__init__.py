@@ -1,0 +1,52 @@
+"""
+Weekly Tests Package
+Collection of weekly quality control tests for medical equipment
+all the weekly tests, this is the same for monthly and daily and if added later yearly
+"""
+from .niveau_helium import NiveauHeliumTest, test_helium_level
+from .PIQT import PIQTTest, test_piqt
+import sys
+import os
+services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if services_dir not in sys.path:
+    sys.path.insert(0, services_dir)
+
+from basic_tests.mlc_leaf_jaw import MLCLeafJawTest, test_mlc_leaf_jaw
+
+# THIS IS WHERE YOU ADD NEW WEEKLY TESTS -> 
+WEEKLY_TESTS = {
+    'niveau_helium': {
+        'class': NiveauHeliumTest,
+        'function': test_helium_level,
+        'description': 'ANSM - Test du niveau d\'hélium - Doit être supérieur à 65%',
+        'category': 'weekly'
+    },
+    'mlc_leaf_jaw': {
+        'class': MLCLeafJawTest,
+        'function': test_mlc_leaf_jaw,
+        'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
+        'category': 'weekly'
+    },
+    'piqt': {
+        'class': PIQTTest,
+        'function': test_piqt,
+        'description': 'PIQT - Philips Image Quality Test - Parse rapport HTML',
+        'category': 'weekly'
+    }
+}
+
+def get_weekly_tests():
+    """
+    Get list of all available weekly tests
+    
+    Returns:
+        dict: Dictionary of available weekly tests with their descriptions
+    """
+    return {
+        test_id: {
+            'description': test_info['description'],
+            'class_name': test_info['class'].__name__,
+            'category': test_info['category']
+        }
+        for test_id, test_info in WEEKLY_TESTS.items()
+    }

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Control Tests</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Quality Control Tests</h1>
+            <nav>
+                <a href="/" class="nav-link active">Tests</a>
+                <a href="/static/review.html" class="nav-link">Review</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Test Selection Section -->
+            <section class="test-selection-section">
+                <h2>Available Tests</h2>
+                
+                <div id="testList" class="test-list">
+                    <div class="loading-placeholder">
+                        <div class="spinner"></div>
+                        <p>Loading tests...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Test Execution Modal -->
+            <div id="testModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">Test Execution</h3>
+                        <span class="close" onclick="closeTestModal()">&times;</span>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div id="modalDescription" class="test-description"></div>
+                        
+                        <form id="testForm">
+                            <div id="formFields"></div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="closeTestModal()">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Execute Test
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Results Section -->
+            <section id="testResultsSection" class="test-results-section" style="display: none;">
+                <h2>Test Results</h2>
+                
+                <div class="result-header">
+                    <h3 id="resultTestName">Test Name</h3>
+                    <div id="resultOverallStatus" class="overall-status"></div>
+                </div>
+                
+                <div class="result-details">
+                    <div class="result-card">
+                        <h4>Results</h4>
+                        <div id="testResults" class="results-grid"></div>
+                    </div>
+                    
+                    <div id="testVisualizations" class="result-card" style="display: none;">
+                        <h4>Visualizations</h4>
+                        <div id="visualizationsList" class="visualizations-grid"></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="newTest()">Run Another Test</button>
+                    <button class="btn btn-secondary" onclick="printResults()">Print Results</button>
+                </div>
+            </section>
+
+            <!-- DICOM Analysis Section (Hidden by default) -->
+            <section id="dicomSection" class="upload-section" style="display: none;">
+                <h2>DICOM Analysis</h2>
+                <p class="info-text">
+                    Upload DICOM files for MLC blade analysis
+                </p>
+                
+                <div class="upload-area" id="dropZone">
+                    <div class="upload-icon">📁</div>
+                    <p>Drag & drop DICOM files here or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept=".dcm" hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Select Files
+                    </button>
+                </div>
+
+                <div id="fileList" class="file-list"></div>
+
+                <button id="analyzeBtn" class="btn btn-success btn-large" disabled>
+                    � Run Analysis
+                </button>
+            </section>
+
+            <section id="loadingSection" class="loading-section" style="display: none;">
+                <div class="spinner"></div>
+                <p>Processing... Please wait</p>
+            </section>
+        </main>
+
+        <footer>
+            <p>Quality Control Test System | © 2025</p>
+        </footer>
+    </div>
+
+    <!-- Modular JS Files -->
+    <script src="/static/js/config.js?v=3"></script>
+    <script src="/static/js/state.js?v=3"></script>
+    <script src="/static/js/ui.js?v=3"></script>
+    <script src="/static/js/test-list.js?v=3"></script>
+    <script src="/static/js/form-builder.js?v=3"></script>
+    <script src="/static/js/test-execution.js?v=3"></script>
+    <script src="/static/js/results-display.js?v=3"></script>
+    <script src="/static/js/main.js?v=3"></script>
+</body>
+</html>

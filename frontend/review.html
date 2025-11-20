@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLC Blade Analysis - Review</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔬 MLC Blade Position Analysis</h1>
+            <nav>
+                <a href="/" class="nav-link">Analysis</a>
+                <a href="/static/review.html" class="nav-link active">Review</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="filter-section">
+                <h2>Review Historical Tests</h2>
+                
+                <div class="filter-card">
+                    <h3>Filter by Date Range</h3>
+                    <div class="filter-grid">
+                        <div class="filter-item">
+                            <label for="startDate">Start Date:</label>
+                            <input type="date" id="startDate" class="form-input">
+                        </div>
+                        <div class="filter-item">
+                            <label for="endDate">End Date:</label>
+                            <input type="date" id="endDate" class="form-input">
+                        </div>
+                        <div class="filter-item">
+                            <button id="filterBtn" class="btn btn-primary">
+                                🔍 Filter
+                            </button>
+                            <button id="clearFilterBtn" class="btn btn-secondary">
+                                🗑️ Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <h3>Database Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="label">Total Tests:</span>
+                            <span id="totalTests" class="value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="label">Total Measurements:</span>
+                            <span id="totalMeasurements" class="value">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="label">Date Range:</span>
+                            <span id="dateRange" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="loadingSection" class="loading-section" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading tests...</p>
+            </section>
+
+            <section class="tests-section">
+                <h3>Test History</h3>
+                <div id="testsContainer" class="tests-container">
+                    <p class="placeholder-text">No tests found. Run some analyses first!</p>
+                </div>
+            </section>
+
+            <section id="testDetailSection" class="test-detail-section" style="display: none;">
+                <div class="detail-header">
+                    <h2>Test Details</h2>
+                    <button class="btn btn-secondary" onclick="closeTestDetail()">✖ Close</button>
+                </div>
+
+                <div class="detail-info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Test ID:</span>
+                            <span id="detailTestId" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Filename:</span>
+                            <span id="detailFilename" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Test Date:</span>
+                            <span id="detailDate" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Upload Date:</span>
+                            <span id="detailUploadDate" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <h3>Summary</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span class="label">Total Blades:</span>
+                            <span id="detailTotalBlades" class="value">-</span>
+                        </div>
+                        <div class="summary-item success">
+                            <span class="label">OK:</span>
+                            <span id="detailOkBlades" class="value">-</span>
+                        </div>
+                        <div class="summary-item warning">
+                            <span class="label">Out of Tolerance:</span>
+                            <span id="detailOutOfTolerance" class="value">-</span>
+                        </div>
+                        <div class="summary-item info">
+                            <span class="label">Closed:</span>
+                            <span id="detailClosedBlades" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="visualization-section">
+                    <h3>Visualizations</h3>
+                    <div id="detailVisualizationDropdown">
+                        <select id="detailVizSelect" class="form-select">
+                            <option value="">-- No visualizations available --</option>
+                        </select>
+                    </div>
+                    <div id="detailVisualizationDisplay" class="visualization-display">
+                        <p class="placeholder-text">No visualizations available for this test</p>
+                    </div>
+                </div>
+
+                <div class="results-table-section">
+                    <h3>Blade Measurements</h3>
+                    <div class="table-controls">
+                        <input type="text" id="detailSearchInput" class="search-input" placeholder="Search blade pair...">
+                        <select id="detailStatusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="OK">OK</option>
+                            <option value="OUT_OF_TOLERANCE">Out of Tolerance</option>
+                            <option value="CLOSED">Closed</option>
+                        </select>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="detailResultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Blade Pair</th>
+                                    <th>Distance Sup (mm)</th>
+                                    <th>Distance Inf (mm)</th>
+                                    <th>Field Size (mm)</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailResultsTableBody">
+                                <!-- Results will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="deleteTestBtn" class="btn btn-danger">
+                        🗑️ Delete Test
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>MLC Blade Position Analysis System | © 2025</p>
+        </footer>
+    </div>
+
+    <script src="/static/review.js"></script>
+</body>
+</html>
