@@ -128,11 +128,16 @@ class MLCLeafJawTest(BaseTest):
                     logger.warning(f"Failed to analyze DICOM file: {file_path}")
                     continue
                 
+                # Extract acquisition date from DICOM
+                ds = self._read_dicom_header(file_path)
+                acquisition_date = self._get_dicom_datetime(ds)
+                
                 # Store per-file results
                 self.file_results.append({
                     'file': file_path,
                     'results': result,
-                    'analysis_type': analysis_type
+                    'analysis_type': analysis_type,
+                    'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S') if acquisition_date else 'Unknown'
                 })
                 
                 # Combine results for overall statistics (only for leaf position tests)
@@ -1056,6 +1061,21 @@ class MLCLeafJawTest(BaseTest):
             logger.info(f"First result item: {type(self.analyzer_results[0]) if len(self.analyzer_results) > 0 else 'empty'}")
             if len(self.analyzer_results) > 0:
                 logger.info(f"First result content: {self.analyzer_results[0]}")
+        
+        # Add image name and acquisition date for each processed file
+        for file_idx, file_result in enumerate(self.file_results):
+            filename = os.path.basename(file_result['file'])
+            acq_date = file_result.get('acquisition_date', 'Unknown')
+            analysis_type = file_result.get('analysis_type', 'unknown')
+            
+            # Add a header result for this image
+            self.add_result(
+                name=f"Image {file_idx + 1}: {filename}",
+                value=f"Acquisition: {acq_date}",
+                status="INFO",
+                unit="",
+                tolerance=f"Analysis Type: {analysis_type.replace('_', ' ').title()}"
+            )
         
         if not self.analyzer_results:
             self.add_result(
