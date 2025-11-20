@@ -747,6 +747,95 @@ async def execute_indice_quality_test(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/basic-tests/piqt")
+async def execute_piqt_test(request: Request):
+    """
+    Execute PIQT test (Philips Image Quality Test)
+    Expects multipart form with:
+        - operator: str
+        - html_file: uploaded HTML file
+        - test_date: str (optional)
+        - notes: str (optional)
+    """
+    logger.info("[BASIC-TESTS] Executing PIQT test")
+    
+    try:
+        # Parse form data
+        form = await request.form()
+        logger.info(f"[BASIC-TESTS] Form keys: {list(form.keys())}")
+        
+        # Debug: log all form data
+        for key in form.keys():
+            value = form[key]
+            logger.info(f"[BASIC-TESTS] PIQT form field '{key}': type={type(value)}, hasattr(filename)={hasattr(value, 'filename')}")
+            if hasattr(value, 'filename'):
+                logger.info(f"[BASIC-TESTS]   -> filename: {value.filename}")
+        
+        # Extract operator
+        operator = form.get("operator")
+        if not operator:
+            logger.error("[BASIC-TESTS] operator field is missing")
+            raise HTTPException(status_code=400, detail="operator is required")
+        
+        logger.info(f"[BASIC-TESTS] Operator: {operator}")
+        
+        # Extract HTML file
+        html_file = form.get("html_file")
+        if not html_file or not hasattr(html_file, 'filename'):
+            logger.error(f"[BASIC-TESTS] html_file is missing or invalid. html_file={html_file}, hasattr={hasattr(html_file, 'filename') if html_file else 'N/A'}")
+            raise HTTPException(status_code=400, detail="html_file is required")
+        
+        if not html_file.filename.lower().endswith(('.html', '.htm')):
+            raise HTTPException(status_code=400, detail=f"File {html_file.filename} is not an HTML file")
+        
+        # Save uploaded file
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, html_file.filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(html_file.file, buffer)
+        
+        logger.info(f"[BASIC-TESTS] Saved HTML file: {html_file.filename}")
+        
+        # Extract test date
+        test_date = None
+        test_date_str = form.get("test_date")
+        if test_date_str:
+            try:
+                test_date = datetime.fromisoformat(test_date_str.replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    test_date = datetime.strptime(test_date_str, '%Y-%m-%d')
+                except ValueError:
+                    logger.warning(f"[BASIC-TESTS] Invalid date format: {test_date_str}")
+        
+        # Execute test
+        result = execute_test(
+            'piqt',
+            operator=operator,
+            html_file_path=file_path,
+            test_date=test_date,
+            notes=form.get('notes')
+        )
+        
+        # Clean up uploaded file
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        
+        logger.info(f"[BASIC-TESTS] PIQT test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[BASIC-TESTS] Error executing PIQT test: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/basic-tests/safety-systems")
 async def execute_safety_systems(data: dict):
     """
@@ -865,6 +954,8 @@ async def execute_mlc_leaf_jaw(
     Execute MLC leaf and jaw test with DICOM file uploads
     """
     logger.info("[BASIC-TESTS] Executing MLC leaf and jaw test")
+    
+    file_paths = []  # Initialize at the start to avoid UnboundLocalError
     
     try:
         # Parse form data manually to handle flexible input

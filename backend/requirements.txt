@@ -9,3 +9,4 @@ python-multipart==0.0.20
 pydantic==2.12.2
 scipy
 matplotlib
+beautifulsoup4==4.12.3

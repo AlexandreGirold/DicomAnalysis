@@ -18,6 +18,7 @@ function displayTestResults(result) {
         <div class="result-row ${res.status.toLowerCase()}">
             <span class="result-name">${name.replace(/_/g, ' ')}</span>
             <span class="result-value">${res.value} ${res.unit || ''}</span>
+            ${res.tolerance ? `<span class="result-tolerance">${res.tolerance}</span>` : ''}
             <span class="result-status ${res.status.toLowerCase()}">${res.status}</span>
         </div>
     `).join('');

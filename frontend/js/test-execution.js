@@ -138,9 +138,16 @@ async function handleRegularTest(capturedFormData, testId) {
 }
 
 async function handleFileUploadTest(capturedFormData, testId) {
-    console.log('Submitting file upload test');
+    console.log('Submitting file upload test to:', testId);
     
-    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`, {
+    // Use specific endpoint for the test
+    const endpoint = testId === 'mlc_leaf_jaw' 
+        ? `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`
+        : `${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`;
+    
+    console.log('Upload endpoint:', endpoint);
+    
+    const response = await fetch(endpoint, {
         method: 'POST',
         body: capturedFormData
     });

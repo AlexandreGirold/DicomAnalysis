@@ -1054,8 +1054,15 @@ footer {
 .result-value {
     color: var(--text-primary);
     font-weight: 600;
+    flex-shrink: 0;
+    min-width: 100px;
+}
+
+.result-tolerance {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
     flex-grow: 1;
-    text-align: center;
+    font-style: italic;
 }
 
 .result-status {

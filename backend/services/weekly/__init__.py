@@ -4,6 +4,7 @@ Collection of weekly quality control tests for medical equipment
 all the weekly tests, this is the same for monthly and daily and if added later yearly
 """
 from .niveau_helium import NiveauHeliumTest, test_helium_level
+from .PIQT import PIQTTest, test_piqt
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +25,12 @@ WEEKLY_TESTS = {
         'class': MLCLeafJawTest,
         'function': test_mlc_leaf_jaw,
         'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
+        'category': 'weekly'
+    },
+    'piqt': {
+        'class': PIQTTest,
+        'function': test_piqt,
+        'description': 'PIQT - Philips Image Quality Test - Parse rapport HTML',
         'category': 'weekly'
     }
 }
