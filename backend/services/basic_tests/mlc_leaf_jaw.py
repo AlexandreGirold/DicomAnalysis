@@ -959,20 +959,42 @@ class MLCLeafJawTest(BaseTest):
                 pairs = []
                 field_sizes = []
                 statuses = []
+                distances_sup = []
+                distances_inf = []
                 
                 for result in file_specific_results:
                     if isinstance(result, (list, tuple)) and len(result) >= 5:
-                        pair, _, _, field_size, status = result[0], result[1], result[2], result[3], result[4]
+                        pair, dist_sup, dist_inf, field_size, status = result[0], result[1], result[2], result[3], result[4]
                         if field_size is not None and status != 'CLOSED':
                             pairs.append(pair)
                             field_sizes.append(field_size)
                             statuses.append(status)
+                            if dist_sup is not None and not np.isnan(dist_sup):
+                                distances_sup.append(dist_sup)
+                            if dist_inf is not None and not np.isnan(dist_inf):
+                                distances_inf.append(dist_inf)
                 
                 # Separate OK and out-of-tolerance points
                 pairs_ok = [pairs[i] for i in range(len(pairs)) if 'OK' in statuses[i]]
                 field_sizes_ok = [field_sizes[i] for i in range(len(field_sizes)) if 'OK' in statuses[i]]
                 pairs_bad = [pairs[i] for i in range(len(pairs)) if 'OUT_OF_TOLERANCE' in statuses[i]]
                 field_sizes_bad = [field_sizes[i] for i in range(len(field_sizes)) if 'OUT_OF_TOLERANCE' in statuses[i]]
+                
+                # Calculate statistics
+                # Calculate average leaf length (distance between sup and inf for each blade)
+                leaf_lengths = []
+                min_length = min(len(distances_sup), len(distances_inf))
+                for i in range(min_length):
+                    # Leaf length = distance between top edge and bottom edge
+                    leaf_length = abs(distances_sup[i] - distances_inf[i])
+                    leaf_lengths.append(leaf_length)
+                
+                # Calculate average and standard deviation of leaf lengths
+                avg_leaf_length = np.mean(leaf_lengths) if leaf_lengths else None
+                std_leaf_length = np.std(leaf_lengths) if leaf_lengths else None
+                
+                avg_field_size = np.mean(field_sizes) if field_sizes else None
+                std_field_size = np.std(field_sizes) if field_sizes else None
                 
                 # Plot tolerance bands
                 axes[1, 1].axhline(y=self.analyzer.expected_field_size, color='green', linestyle='-', 
@@ -987,11 +1009,24 @@ class MLCLeafJawTest(BaseTest):
                 if pairs_bad:
                     axes[1, 1].plot(pairs_bad, field_sizes_bad, 'ro', label='Out of Tolerance', markersize=7, markeredgewidth=2)
                 
+                # Add statistics text box
+                stats_text = []
+                if avg_leaf_length is not None:
+                    stats_text.append(f'Longueur Lames - Moyenne: {avg_leaf_length:.3f} mm')
+                    stats_text.append(f'Longueur Lames - Écart-type: {std_leaf_length:.3f} mm')
+                
+                if stats_text:
+                    axes[1, 1].text(0.02, 0.98, '\n'.join(stats_text),
+                                   transform=axes[1, 1].transAxes,
+                                   fontsize=9,
+                                   verticalalignment='top',
+                                   bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+                
                 axes[1, 1].set_xlabel('Blade Pair Number')
                 axes[1, 1].set_ylabel('Field Size (mm)')
                 axes[1, 1].set_title(f'Field Size per Blade Pair (Expected: {self.analyzer.expected_field_size}±{self.analyzer.field_size_tolerance}mm)', 
                                     fontweight='bold')
-                axes[1, 1].legend()
+                axes[1, 1].legend(loc='upper right')
                 axes[1, 1].grid(True, alpha=0.3)
             
             plt.tight_layout()
@@ -1094,6 +1129,11 @@ class MLCLeafJawTest(BaseTest):
             out_of_tolerance = 0
             closed_blades = 0
             
+            # Collect blade positions for statistics
+            distances_sup = []  # Top edge distances
+            distances_inf = []  # Bottom edge distances
+            field_sizes = []    # Field sizes
+            
             # Safely process each result item
             for i, r in enumerate(self.analyzer_results):
                 try:
@@ -1107,6 +1147,20 @@ class MLCLeafJawTest(BaseTest):
                             out_of_tolerance += 1
                         elif status == 'CLOSED':
                             closed_blades += 1
+                        
+                        # Collect position data (skip closed blades)
+                        if status != 'CLOSED' and len(r) >= 4:
+                            dist_sup = r[1]  # Distance superior (top edge)
+                            dist_inf = r[2]  # Distance inferior (bottom edge)
+                            field_size = r[3]  # Field size
+                            
+                            if dist_sup is not None and not np.isnan(dist_sup):
+                                distances_sup.append(dist_sup)
+                            if dist_inf is not None and not np.isnan(dist_inf):
+                                distances_inf.append(dist_inf)
+                            if field_size is not None and not np.isnan(field_size):
+                                field_sizes.append(field_size)
+                                
                     elif isinstance(r, dict):
                         # Handle dictionary format
                         status = r.get('status', 'UNKNOWN')
