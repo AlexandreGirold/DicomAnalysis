@@ -208,43 +208,7 @@ class FieldCenterDetector:
             'bbox': (all_x_min, all_y_min, all_x_max, all_y_max)
         }
     
-    def visualize_detection(self, img_8bit, clahe_img, binary_image, laplacian_sharpened, contours, field_center, filename):
-        """
-        Create a single-image visualization that shows ONLY the field center overlay
-        (original/laplacian image with detected field boundary boxes and center crosshair).
-        This replaces the 4-panel view to keep the image focused on the center detection.
-        """
-        # Use the sharpened image for clearer overlay
-        image_with_center = cv2.cvtColor(laplacian_sharpened.copy(), cv2.COLOR_GRAY2BGR)
-
-        # Draw contours (field boundaries) as green rectangles
-        for contour in contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(image_with_center, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Draw center crosshair if available
-        if field_center:
-            center_x = int(field_center['center_x_px'])
-            center_y = int(field_center['center_y_px'])
-            cross_size = 20
-            # Horizontal and vertical lines
-            cv2.line(image_with_center, (center_x - cross_size, center_y), (center_x + cross_size, center_y), (0, 0, 255), 2)
-            cv2.line(image_with_center, (center_x, center_y - cross_size), (center_x, center_y + cross_size), (0, 0, 255), 2)
-            # Small filled circle
-            cv2.circle(image_with_center, (center_x, center_y), 5, (0, 0, 255), -1)
-
-        # Optionally annotate pixel coordinates near the center
-        if field_center:
-            text = f"u={field_center['center_x_px']:.1f}px, v={field_center['center_y_px']:.1f}px"
-            cv2.putText(image_with_center, text, (max(10, center_x + 10), max(20, center_y - 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-
-        # Save the single-image visualization
-        output_filename = f"field_center_{Path(filename).stem}.png"
-        cv2.imwrite(output_filename, image_with_center)
-        print(f"Visualization saved to: {output_filename}")
-
-        return output_filename
+    # Visualization removed - values only for monthly trend analysis
     
     def process_image(self, filepath):
         """Process a single DICOM image to detect field center"""
@@ -284,17 +248,11 @@ class FieldCenterDetector:
         else:
             print("\n⚠️  Could not detect field center")
         
-        # Create visualization
-        viz_filename = self.visualize_detection(img_8bit, clahe_img, binary_image, 
-                                                laplacian_sharpened, final_contours, 
-                                                field_center, Path(filepath).name)
-        
         print(f"{'='*60}\n")
         
         return {
             'field_center': field_center,
-            'metadata': metadata,
-            'visualization': viz_filename
+            'metadata': metadata
         }
 
 

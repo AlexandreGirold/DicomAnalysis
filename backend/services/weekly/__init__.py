@@ -5,6 +5,7 @@ all the weekly tests, this is the same for monthly and daily and if added later 
 """
 from .niveau_helium import NiveauHeliumTest, test_helium_level
 from .PIQT import PIQTTest, test_piqt
+from .MVIC import MVICTest, test_mvic
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,6 +26,12 @@ WEEKLY_TESTS = {
         'class': MLCLeafJawTest,
         'function': test_mlc_leaf_jaw,
         'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
+        'category': 'weekly'
+    },
+    'mvic': {
+        'class': MVICTest,
+        'function': test_mvic,
+        'description': 'MVIC - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
         'category': 'weekly'
     },
     'piqt': {

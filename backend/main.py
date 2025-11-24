@@ -1074,6 +1074,151 @@ async def execute_mlc_leaf_jaw(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/basic-tests/mvic")
+async def execute_mvic(request: Request):
+    """
+    Execute MVIC (MV Imaging Check) test with 5 DICOM files upload
+    Validates field size and shape with automatic detection
+    """
+    logger.info("[BASIC-TESTS] Executing MVIC test")
+    
+    file_paths = []
+    
+    try:
+        # Log request details
+        logger.info(f"[BASIC-TESTS] Request method: {request.method}")
+        logger.info(f"[BASIC-TESTS] Request headers: {dict(request.headers)}")
+        logger.info(f"[BASIC-TESTS] Content-Type: {request.headers.get('content-type')}")
+        
+        # Parse form data manually to handle flexible input
+        form = await request.form()
+        logger.info(f"[BASIC-TESTS] Form keys: {list(form.keys())}")
+        
+        # Debug: log all form data
+        for key in form.keys():
+            value = form[key]
+            logger.info(f"[BASIC-TESTS] {key}: {type(value)} = {value if not hasattr(value, 'filename') else f'File: {value.filename}'}")
+        
+        # Extract operator - handle both single value and list
+        operator_field = form.get("operator")
+        if isinstance(operator_field, list):
+            operator = operator_field[0] if operator_field else None
+        else:
+            operator = operator_field
+            
+        if not operator:
+            raise HTTPException(status_code=400, detail="operator is required")
+        
+        # Extract test_date (optional) - handle both single value and list
+        test_date_field = form.get("test_date") 
+        if isinstance(test_date_field, list):
+            test_date = test_date_field[0] if test_date_field else None
+        else:
+            test_date = test_date_field
+        
+        # Extract notes (optional) - handle both single value and list
+        notes_field = form.get("notes")
+        if isinstance(notes_field, list):
+            notes = notes_field[0] if notes_field else None
+        else:
+            notes = notes_field
+        
+        # Extract files - more robust approach
+        dicom_files = []
+        
+        # Try to get files from different possible field names
+        possible_file_fields = ['dicom_files', 'files']
+        for field_name in possible_file_fields:
+            try:
+                # Try getlist first
+                if hasattr(form, 'getlist'):
+                    file_list = form.getlist(field_name)
+                    for file_field in file_list:
+                        if hasattr(file_field, 'filename') and file_field.filename:
+                            dicom_files.append(file_field)
+                
+                # Also try direct access
+                file_field = form.get(field_name)
+                if file_field and hasattr(file_field, 'filename') and file_field.filename:
+                    if file_field not in dicom_files:  # Avoid duplicates
+                        dicom_files.append(file_field)
+                        
+            except Exception as e:
+                logger.warning(f"[BASIC-TESTS] Error accessing field {field_name}: {e}")
+                continue
+        
+        if not dicom_files:
+            raise HTTPException(status_code=400, detail="5 DICOM files are required")
+        
+        if len(dicom_files) != 5:
+            raise HTTPException(status_code=400, detail=f"Exactly 5 DICOM files required, got {len(dicom_files)}")
+        
+        logger.info(f"[BASIC-TESTS] Operator: {operator}")
+        logger.info(f"[BASIC-TESTS] Test date: {test_date}")
+        logger.info(f"[BASIC-TESTS] Number of files: {len(dicom_files)}")
+        
+        # Create upload directory if it doesn't exist
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save all uploaded files
+        file_paths = []
+        for i, file in enumerate(dicom_files, 1):
+            if not file.filename.lower().endswith('.dcm'):
+                raise HTTPException(status_code=400, detail=f"File {file.filename} must be a DICOM file (.dcm)")
+            
+            file_path = os.path.join(upload_dir, file.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            file_paths.append(file_path)
+            logger.info(f"[BASIC-TESTS] Saved file {i}: {file.filename}")
+        
+        logger.info(f"[BASIC-TESTS] Saved {len(file_paths)} DICOM files")
+        
+        # Parse test date if provided
+        parsed_test_date = None
+        if test_date:
+            try:
+                parsed_test_date = datetime.fromisoformat(test_date.replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    parsed_test_date = datetime.strptime(test_date, '%Y-%m-%d')
+                except ValueError:
+                    logger.warning(f"[BASIC-TESTS] Invalid date format: {test_date}")
+        
+        # Execute test
+        from services.weekly.MVIC import MVICTest
+        test = MVICTest()
+        result = test.execute(
+            files=file_paths,
+            operator=operator,
+            test_date=parsed_test_date,
+            notes=notes
+        )
+        
+        # Clean up uploaded files
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.info(f"[BASIC-TESTS] MVIC test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except Exception as e:
+        # Clean up files on error
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.error(f"[BASIC-TESTS] Error executing MVIC test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/basic-tests/{test_id}")
 async def execute_basic_test_generic(test_id: str, data: dict):
     """

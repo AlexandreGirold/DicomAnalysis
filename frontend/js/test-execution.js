@@ -65,7 +65,7 @@ async function handleTestSubmission(e) {
         let isFileUploadTest = false;
         if (window.APP_STATE.currentFormData && window.APP_STATE.currentFormData.file_upload) {
             isFileUploadTest = true;
-        } else if (testId === 'mlc_leaf_jaw') {
+        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic') {
             isFileUploadTest = true;
         }
         

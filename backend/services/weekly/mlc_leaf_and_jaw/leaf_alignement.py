@@ -294,109 +294,7 @@ class LeafAlignmentAnalyzer:
         
         return y1_midlines, y2_midlines
     
-    def visualize_leaf_alignment(self, original_img, contours, midlines, y1_midlines, y2_midlines, filename):
-        """
-        Créer une visualisation montrant les lames détectées et leurs lignes médianes avec les angles
-        """
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        
-        # Panneau 1 : Blocs de lames détectés avec lignes médianes
-        axes[0, 0].imshow(original_img, cmap='gray')
-        
-        # Dessiner les blocs de lames
-        for i, contour in enumerate(contours):
-            x, y, w, h = cv2.boundingRect(contour)
-            rect = plt.Rectangle((x, y), w, h, fill=False, color='green', linewidth=1)
-            axes[0, 0].add_patch(rect)
-            cx, cy = x + w//2, y + h//2
-            axes[0, 0].text(cx, cy, str(i+1), color='red', fontsize=6, ha='center')
-        
-        # Dessiner toutes les lignes médianes sous forme de croix vertes (comme dans l'image)
-        for i, midline in enumerate(midlines):
-            x = midline['x']
-            y1, y2 = midline['y_start'], midline['y_end']
-            
-            # Dessiner une ligne verticale
-            axes[0, 0].plot([x, x], [y1, y2], 'lime', linewidth=2)
-            
-            # Dessiner des croix à intervalles réguliers le long de la ligne médiane
-            num_crosses = 10
-            for j in range(num_crosses):
-                y_pos = y1 + (y2 - y1) * j / (num_crosses - 1)
-                cross_size = 3
-                # Ligne horizontale de la croix
-                axes[0, 0].plot([x-cross_size, x+cross_size], [y_pos, y_pos], 'lime', linewidth=1)
-                # Ligne verticale de la croix (déjà dessinée ci-dessus)
-            
-            # Ajouter le texte de l'angle
-            axes[0, 0].text(x+5, (y1+y2)/2, f"{midline['angle']:.1f}°", 
-                           color='yellow', fontsize=7, rotation=0)
-        
-        axes[0, 0].set_title(f'Lames détectées et lignes médianes ({len(contours)} blocs, {len(midlines)} lignes)', fontweight='bold')
-        axes[0, 0].axis('off')
-        
-        # Panneau 2 : Lignes médianes du banc Y1 (bas)
-        axes[0, 1].imshow(original_img, cmap='gray')
-        for midline in y1_midlines:
-            x = midline['x']
-            y1, y2 = midline['y_start'], midline['y_end']
-            axes[0, 1].plot([x, x], [y1, y2], 'blue', linewidth=3)
-            axes[0, 1].text(x+5, (y1+y2)/2, f"{midline['angle']:.1f}°", 
-                           color='cyan', fontsize=8, rotation=0)
-        axes[0, 1].set_title(f'Banc Y1 (Bas) - {len(y1_midlines)} lignes', fontweight='bold')
-        axes[0, 1].axis('off')
-        
-        # Panneau 3 : Lignes médianes du banc Y2 (haut)
-        axes[1, 0].imshow(original_img, cmap='gray')
-        for midline in y2_midlines:
-            x = midline['x']
-            y1, y2 = midline['y_start'], midline['y_end']
-            axes[1, 0].plot([x, x], [y1, y2], 'red', linewidth=3)
-            axes[1, 0].text(x+5, (y1+y2)/2, f"{midline['angle']:.1f}°", 
-                           color='yellow', fontsize=8, rotation=0)
-        axes[1, 0].set_title(f'Banc Y2 (Haut) - {len(y2_midlines)} lignes', fontweight='bold')
-        axes[1, 0].axis('off')
-        
-        # Panneau 4 : Statistiques récapitulatives
-        axes[1, 1].axis('off')
-        
-        # Calculer les statistiques
-        y1_angles = [midline['angle'] for midline in y1_midlines]
-        y2_angles = [midline['angle'] for midline in y2_midlines]
-        
-        y1_avg = np.mean(y1_angles) if y1_angles else 0
-        y2_avg = np.mean(y2_angles) if y2_angles else 0
-        y1_std = np.std(y1_angles) if y1_angles else 0
-        y2_std = np.std(y2_angles) if y2_angles else 0
-        
-        summary_text = f"""
-LEAF ALIGNMENT RESULATAT:
-
-Leaf Bank    Moyenne angle (°)       Écart type (°)       Nombre
-Y1           {y1_avg:.2f}            {y1_std:.2f}         {len(y1_midlines)}
-Y2           {y2_avg:.2f}            {y2_std:.2f}         {len(y2_midlines)}
-
-Total Leaf Blocks: {len(contours)}
-Total Midlines: {len(midlines)}
-
-Angles individuels des milieux des lames:
-Y1: {', '.join([f'{a:.1f}°' for a in y1_angles[:8]])}{'...' if len(y1_angles) > 8 else ''}
-Y2: {', '.join([f'{a:.1f}°' for a in y2_angles[:8]])}{'...' if len(y2_angles) > 8 else ''}
-        """
-        
-        axes[1, 1].text(0.05, 0.95, summary_text, transform=axes[1, 1].transAxes, 
-                        fontsize=10, verticalalignment='top', fontfamily='monospace')
-        axes[1, 1].set_title('Résumé de l\'analyse', fontweight='bold')
-        
-        plt.tight_layout()
-        
-        # Sauvegarder la figure
-        output_filename = f"leaf_alignment_{Path(filename).stem}.png"
-        plt.savefig(output_filename, dpi=150, bbox_inches='tight')
-        print(f"Visualisation sauvegardée dans : {output_filename}")
-        plt.close()
-        
-        return output_filename
+    # Visualization removed - values only for monthly trend analysis
     
     def process_image(self, filepath):
         """Traiter une seule image DICOM pour analyser l'alignement des lames
@@ -447,10 +345,6 @@ Y2: {', '.join([f'{a:.1f}°' for a in y2_angles[:8]])}{'...' if len(y2_angles) >
         print(f"Y1           {y1_avg_angle:.2f}")
         print(f"Y2           {y2_avg_angle:.2f}")
         
-        # Créer la visualisation
-        viz_filename = self.visualize_leaf_alignment(clahe_img, final_contours, midlines,
-                                                    y1_midlines, y2_midlines, Path(filepath).name)
-        
         print(f"{'='*60}\n")
         
         return {
@@ -460,8 +354,7 @@ Y2: {', '.join([f'{a:.1f}°' for a in y2_angles[:8]])}{'...' if len(y2_angles) >
             'y2_midlines': y2_midlines,
             'total_midlines': len(midlines),
             'total_leaf_blocks': len(final_contours),
-            'metadata': metadata,
-            'visualization': viz_filename
+            'metadata': metadata
         }
 
 

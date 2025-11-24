@@ -164,43 +164,7 @@ class FieldEdgeDetector:
         
         return merged_contours
     
-    def visualize_detection(self, clahe_img, binary_image, laplacian_sharpened, contours, filename):
-        """
-        Create 3-panel visualization matching notebook cell 9.
-        Shows: CLAHE Enhanced | Binary Threshold | Detected Leaf Regions
-        """
-        fig, axes = plt.subplots(1, 3, figsize=(20, 5))
-        
-        # Panel 1: CLAHE Enhanced
-        axes[0].imshow(clahe_img, cmap='gray')
-        axes[0].set_title('CLAHE Enhanced', fontweight='bold')
-        axes[0].axis('off')
-        
-        # Panel 2: Binary Threshold
-        axes[1].imshow(binary_image, cmap='gray')
-        axes[1].set_title(f'Binary (Threshold={self.tolerance_threshold})', fontweight='bold')
-        axes[1].axis('off')
-        
-        # Panel 3: Detected Leaf Regions with bounding boxes
-        image_with_boxes = cv2.cvtColor(laplacian_sharpened, cv2.COLOR_GRAY2BGR)
-        for i, contour in enumerate(contours):
-            x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(image_with_boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(image_with_boxes, str(i+1), (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-        
-        axes[2].imshow(image_with_boxes)
-        axes[2].set_title('Detected Leaf Regions', fontweight='bold')
-        axes[2].axis('off')
-        
-        plt.tight_layout()
-        
-        # Save figure
-        output_filename = f"field_edge_{Path(filename).stem}.png"
-        plt.savefig(output_filename, dpi=150, bbox_inches='tight')
-        print(f"Visualization saved to: {output_filename}")
-        plt.close()
-        
-        return output_filename
+    # Visualization removed - values only for monthly trend analysis
     
     def process_image(self, filepath):
         """Process a single DICOM image to detect field edges
@@ -229,17 +193,12 @@ class FieldEdgeDetector:
         print(f"After merging: {len(final_contours)} contours")
         print(f"Settings: threshold={self.tolerance_threshold}, min_area={self.min_area}, merge_distance={self.merge_distance_px}px")
         
-        # Create visualization
-        viz_filename = self.visualize_detection(clahe_img, binary_image, laplacian_sharpened, 
-                                                final_contours, Path(filepath).name)
-        
         print(f"{'='*60}\n")
         
         return {
             'contour_count': len(final_contours),
             'contours': final_contours,
-            'metadata': metadata,
-            'visualization': viz_filename
+            'metadata': metadata
         }
 
 
