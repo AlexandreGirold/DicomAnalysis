@@ -48,6 +48,12 @@ class FieldShapeValidator:
             rt_image_pos_x = float(rt_image_position[0])
             rt_image_pos_y = float(rt_image_position[1])
             
+            # Extract acquisition date
+            acquisition_date = getattr(ds, 'AcquisitionDate', getattr(ds, 'ContentDate', 'Unknown'))
+            if acquisition_date != 'Unknown' and len(acquisition_date) == 8:
+                # Format YYYYMMDD to YYYY-MM-DD
+                acquisition_date = f"{acquisition_date[:4]}-{acquisition_date[4:6]}-{acquisition_date[6:]}"
+            
             metadata = {
                 'SAD': SAD,
                 'SID': SID,
@@ -55,7 +61,8 @@ class FieldShapeValidator:
                 'pixel_spacing_x': pixel_spacing_x,
                 'pixel_spacing_y': pixel_spacing_y,
                 'rt_image_pos_x': rt_image_pos_x,
-                'rt_image_pos_y': rt_image_pos_y
+                'rt_image_pos_y': rt_image_pos_y,
+                'acquisition_date': acquisition_date
             }
             
             return image_array, ds, metadata
@@ -315,28 +322,24 @@ class FieldShapeValidator:
         }
     
     def visualize_shape_validation(self, original_img, clahe_img, binary_image, 
-                                   contour, angle_data, validation, filename, dimensions_mm=None):
+                                   contour, angle_data, validation, filename, dimensions_mm=None, save_file=True):
         """
-        Create 4-panel visualization showing:
-        1. CLAHE Enhanced
-        2. Binary Threshold
-        3. Detected Field with corners marked and side lengths
-        4. Summary statistics
+        Create 2-panel visualization showing:
+        1. Original image with detected field
+        2. Detected Field with corners marked and side lengths
+        
+        Args:
+            save_file: If True, saves PNG file to disk. If False, only displays/returns without saving.
         """
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
         
-        # Panel 1: CLAHE Enhanced
-        axes[0, 0].imshow(clahe_img, cmap='gray')
-        axes[0, 0].set_title('CLAHE Enhanced', fontweight='bold')
-        axes[0, 0].axis('off')
+        # Panel 1: Original image with detected field
+        axes[0].imshow(original_img, cmap='gray')
+        axes[0].set_title('Original Image with Detected Field', fontweight='bold')
+        axes[0].axis('off')
         
-        # Panel 2: Binary Threshold (50%)
-        axes[0, 1].imshow(binary_image, cmap='gray')
-        axes[0, 1].set_title('Binary Threshold (50%)', fontweight='bold')
-        axes[0, 1].axis('off')
-        
-        # Panel 3: Detected Field with corners, angles, and side lengths
-        axes[1, 0].imshow(clahe_img, cmap='gray')
+        # Panel 2: Detected Field with corners, angles, and side lengths
+        axes[1].imshow(clahe_img, cmap='gray')
         
         if contour is not None:
             # Draw the contour
@@ -348,11 +351,22 @@ class FieldShapeValidator:
             if angle_data and 'approx_polygon' in angle_data:
                 cv2.drawContours(contour_img, [angle_data['approx_polygon']], -1, (255, 255, 0), 2)
             
-            axes[1, 0].imshow(contour_img)
+            axes[1].imshow(contour_img)
             
             # Mark corners with angles
             if angle_data and 'angles' in angle_data:
                 corners = []
+                # Calculate field center from contour
+                M = cv2.moments(contour)
+                if M['m00'] != 0:
+                    field_center_x = M['m10'] / M['m00']
+                    field_center_y = M['m01'] / M['m00']
+                else:
+                    # Fallback to bounding box center
+                    x, y, w, h = cv2.boundingRect(contour)
+                    field_center_x = x + w / 2
+                    field_center_y = y + h / 2
+                
                 for angle_info in angle_data['angles']:
                     corner = angle_info['corner']
                     angle = angle_info['angle']
@@ -363,13 +377,31 @@ class FieldShapeValidator:
                     color = 'lime' if is_valid else 'red'
                     
                     # Draw corner marker
-                    axes[1, 0].plot(corner[0], corner[1], 'o', color=color, markersize=10)
+                    axes[1].plot(corner[0], corner[1], 'o', color=color, markersize=10)
                     
-                    # Add angle label
+                    # Add angle label - position based on corner location relative to field center
                     offset = 15
-                    axes[1, 0].text(corner[0] + offset, corner[1] + offset, 
-                                   f'{angle:.1f}°',
-                                   color=color, fontsize=10, fontweight='bold',
+                    if corner[0] < field_center_x:
+                        # Left side - place label to the left
+                        text_x = corner[0] - offset
+                        ha = 'right'
+                    else:
+                        # Right side - place label to the right
+                        text_x = corner[0] + offset
+                        ha = 'left'
+                    
+                    # Adjust vertical position based on corner location
+                    if corner[1] < field_center_y:
+                        # Top - place above
+                        text_y = corner[1] - offset
+                    else:
+                        # Bottom - place below
+                        text_y = corner[1] + offset
+                    
+                    axes[1].text(text_x, text_y, 
+                                   f'{angle:.2f}°',
+                                   color=color, fontsize=8, fontweight='bold',
+                                   ha=ha, va='center',
                                    bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7))
                 
                 # Add side lengths if dimensions provided
@@ -398,17 +430,14 @@ class FieldShapeValidator:
                             mm_dist = dimensions_mm.get('height_mm', 0)
                         
                         # Add length label on the side
-                        axes[1, 0].text(mid_x, mid_y, 
-                                       f'{mm_dist:.1f}mm',
-                                       color='cyan', fontsize=11, fontweight='bold',
+                        axes[1].text(mid_x, mid_y, 
+                                       f'{mm_dist:.2f}mm',
+                                       color='cyan', fontsize=9, fontweight='bold',
                                        ha='center', va='center',
                                        bbox=dict(boxstyle='round,pad=0.4', facecolor='black', alpha=0.8))
         
-        axes[1, 0].set_title('Detected Field with Corner Angles & Side Lengths', fontweight='bold')
-        axes[1, 0].axis('off')
-        
-        # Panel 4: Summary Statistics
-        axes[1, 1].axis('off')
+        axes[1].set_title('Detected Field with Corner Angles & Side Lengths', fontweight='bold')
+        axes[1].axis('off')
         
         if validation:
             status_symbol = '✅' if validation['is_valid'] else '❌'
@@ -437,26 +466,37 @@ class FieldShapeValidator:
                         f"  {status} Corner {i}: {angle:.2f}° (error: {error:.2f}°)"
                     )
             
-            summary_text = '\n'.join(summary_lines)
-        else:
-            summary_text = "No validation results available"
-        
-        axes[1, 1].text(0.05, 0.95, summary_text, transform=axes[1, 1].transAxes,
-                       fontsize=10, verticalalignment='top', fontfamily='monospace')
-        axes[1, 1].set_title('Summary', fontweight='bold')
-        
         plt.tight_layout()
         
-        # Save figure
-        output_filename = f"field_shape_{Path(filename).stem}.png"
-        plt.savefig(output_filename, dpi=150, bbox_inches='tight')
-        print(f"Visualization saved to: {output_filename}")
-        plt.close()
+        # Only save file if requested (for standalone mode)
+        output_filename = None
+        if save_file:
+            output_filename = f"field_shape_{Path(filename).stem}.png"
+            plt.savefig(output_filename, dpi=150, bbox_inches='tight')
+            print(f"Visualization saved to: {output_filename}")
+            
+            # Schedule file for deletion after use
+            import atexit
+            def cleanup_file():
+                try:
+                    if Path(output_filename).exists():
+                        Path(output_filename).unlink()
+                        print(f"Cleaned up visualization: {output_filename}")
+                except Exception as e:
+                    print(f"Warning: Could not delete {output_filename}: {e}")
+            
+            atexit.register(cleanup_file)
         
+        plt.close()
         return output_filename
     
-    def process_image(self, filepath):
-        """Process a single DICOM image to validate field shape"""
+    def process_image(self, filepath, save_visualization=True):
+        """Process a single DICOM image to validate field shape
+        
+        Args:
+            filepath: Path to DICOM file
+            save_visualization: If True, saves PNG visualization file. If False, skips file creation.
+        """
         print(f"\n{'='*60}")
         print(f"Field Shape Validation: {Path(filepath).name}")
         print(f"{'='*60}")
@@ -515,17 +555,23 @@ class FieldShapeValidator:
             img_8bit, clahe_img, binary_image, 
             field_contour, angle_data, validation, 
             Path(filepath).name,
-            dimensions_mm=None  # Will be provided by MVIC test
+            dimensions_mm=None,  # Will be provided by MVIC test
+            save_file=save_visualization  # Only save file if requested
         )
         
         print(f"{'='*60}\n")
         
-        return {
+        result = {
             'angle_data': angle_data,
             'validation': validation,
             'metadata': metadata,
             'visualization': viz_filename
         }
+        
+        # Cleanup visualization file after processing
+        # Note: File will be deleted by atexit handler registered in visualize_shape_validation
+        
+        return result
 
 
 def main():
@@ -542,6 +588,8 @@ def main():
     
     # Process all provided DICOM files
     results = []
+    viz_files = []  # Track generated visualization files
+    
     for filepath in sys.argv[1:]:
         result = validator.process_image(filepath)
         if result:
@@ -549,6 +597,9 @@ def main():
                 'file': Path(filepath).name,
                 'result': result
             })
+            # Track visualization file for cleanup
+            if 'visualization' in result and result['visualization']:
+                viz_files.append(result['visualization'])
     
     # Summary
     if results:
@@ -566,6 +617,18 @@ def main():
             status = "✅ PASS" if r['result']['validation']['is_valid'] else "❌ FAIL"
             num_corners = r['result']['validation']['num_corners']
             print(f"  {status} | {r['file']} | {num_corners} corners detected")
+    
+    # Cleanup visualization files after displaying summary
+    # Note: atexit handler will also clean up, but this provides immediate cleanup
+    print("\n" + "="*60)
+    print("Cleaning up visualization files...")
+    for viz_file in viz_files:
+        try:
+            if Path(viz_file).exists():
+                Path(viz_file).unlink()
+                print(f"  ✓ Deleted: {viz_file}")
+        except Exception as e:
+            print(f"  ✗ Could not delete {viz_file}: {e}")
 
 
 if __name__ == "__main__":

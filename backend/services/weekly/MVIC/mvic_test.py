@@ -85,7 +85,7 @@ class MVICTest(BaseTest):
             logger.error(f"Error reading DICOM header from {filepath}: {e}")
             return None
     
-    def _generate_visualization_with_dimensions(self, filepath, dimensions, image_index):
+    def _generate_visualization_with_dimensions(self, filepath, dimensions, size_validation, image_index):
         """Generate visualization with side lengths and convert to base64"""
         try:
             import matplotlib
@@ -115,20 +115,10 @@ class MVICTest(BaseTest):
             
             validation = self.shape_validator.validate_angles(angle_data)
             
-            # Create visualization with dimensions
-            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+            # Create visualization with dimensions (2 panels only)
+            fig, axes = plt.subplots(1, 2, figsize=(16, 6))
             
-            # Panel 1: CLAHE Enhanced
-            axes[0, 0].imshow(clahe_img, cmap='gray')
-            axes[0, 0].set_title('CLAHE Enhanced', fontweight='bold', fontsize=14)
-            axes[0, 0].axis('off')
-            
-            # Panel 2: Binary Threshold (50%)
-            axes[0, 1].imshow(binary_image, cmap='gray')
-            axes[0, 1].set_title('Binary Threshold (50%)', fontweight='bold', fontsize=14)
-            axes[0, 1].axis('off')
-            
-            # Panel 3: Detected Field with annotations
+            # Panel 1: Detected Field with annotations
             contour_img = clahe_img.copy()
             contour_img = cv2.cvtColor(contour_img, cv2.COLOR_GRAY2RGB)
             cv2.drawContours(contour_img, [field_contour], -1, (0, 255, 0), 2)
@@ -136,11 +126,22 @@ class MVICTest(BaseTest):
             if angle_data and 'approx_polygon' in angle_data:
                 cv2.drawContours(contour_img, [angle_data['approx_polygon']], -1, (255, 255, 0), 2)
             
-            axes[1, 0].imshow(contour_img)
+            axes[0].imshow(contour_img)
             
             # Mark corners with angles
             corners = []
             if angle_data and 'angles' in angle_data:
+                # Calculate field center from contour
+                M = cv2.moments(field_contour)
+                if M['m00'] != 0:
+                    field_center_x = M['m10'] / M['m00']
+                    field_center_y = M['m01'] / M['m00']
+                else:
+                    # Fallback to bounding box center
+                    x, y, w, h = cv2.boundingRect(field_contour)
+                    field_center_x = x + w / 2
+                    field_center_y = y + h / 2
+                
                 for angle_info in angle_data['angles']:
                     corner = angle_info['corner']
                     angle = angle_info['angle']
@@ -148,16 +149,69 @@ class MVICTest(BaseTest):
                     corners.append(corner)
                     
                     color = 'lime' if is_valid else 'red'
-                    axes[1, 0].plot(corner[0], corner[1], 'o', color=color, markersize=12)
+                    axes[0].plot(corner[0], corner[1], 'o', color=color, markersize=12)
                     
                     offset = 20
-                    axes[1, 0].text(corner[0] + offset, corner[1] + offset, 
-                                   f'{angle:.1f}°',
-                                   color=color, fontsize=12, fontweight='bold',
+                    # Position based on corner location relative to field center
+                    if corner[0] < field_center_x:
+                        # Left side - place label to the left
+                        text_x = corner[0] - offset
+                        ha = 'right'
+                    else:
+                        # Right side - place label to the right
+                        text_x = corner[0] + offset
+                        ha = 'left'
+                    
+                    # Adjust vertical position based on corner location
+                    if corner[1] < field_center_y:
+                        # Top - place above
+                        text_y = corner[1] - offset
+                    else:
+                        # Bottom - place below
+                        text_y = corner[1] + offset
+                    
+                    axes[0].text(text_x, text_y, 
+                                   f'{angle:.2f}°',
+                                   color=color, fontsize=8, fontweight='bold',
+                                   ha=ha, va='center',
                                    bbox=dict(boxstyle='round,pad=0.5', facecolor='black', alpha=0.8))
                 
                 # Add side lengths
                 if dimensions and len(corners) >= 4:
+                    detected_width = dimensions.get('width_mm', 0)
+                    detected_height = dimensions.get('height_mm', 0)
+                    
+                    # Get expected dimensions - need to find closest match if validation failed
+                    if size_validation and 'expected_width' in size_validation:
+                        expected_width = size_validation.get('expected_width', 0)
+                        expected_height = size_validation.get('expected_height', 0)
+                    else:
+                        # Find closest expected size from the validator
+                        expected_sizes = [
+                            {'width': 150, 'height': 85},
+                            {'width': 85, 'height': 85},
+                            {'width': 50, 'height': 50}
+                        ]
+                        # Find closest match (try both orientations)
+                        min_error = float('inf')
+                        expected_width = 0
+                        expected_height = 0
+                        for size in expected_sizes:
+                            error1 = abs(size['width'] - detected_width) + abs(size['height'] - detected_height)
+                            error2 = abs(size['height'] - detected_width) + abs(size['width'] - detected_height)
+                            if error1 < min_error:
+                                min_error = error1
+                                expected_width = size['width']
+                                expected_height = size['height']
+                            if error2 < min_error:
+                                min_error = error2
+                                expected_width = size['height']
+                                expected_height = size['width']
+                    
+                    # Calculate errors
+                    width_error = abs(detected_width - expected_width) if expected_width > 0 else 0
+                    height_error = abs(detected_height - expected_height) if expected_height > 0 else 0
+                    
                     for i in range(len(corners)):
                         p1 = corners[i]
                         p2 = corners[(i + 1) % len(corners)]
@@ -174,27 +228,38 @@ class MVICTest(BaseTest):
                         # Vertical side (larger dy) = height dimension
                         if dx > dy:
                             # Horizontal side - this is the width
-                            mm_dist = dimensions.get('width_mm', 0)
+                            mm_dist = detected_width
+                            error = width_error
                         else:
                             # Vertical side - this is the height
-                            mm_dist = dimensions.get('height_mm', 0)
+                            mm_dist = detected_height
+                            error = height_error
                         
-                        axes[1, 0].text(mid_x, mid_y, 
-                                       f'{mm_dist:.1f}mm',
-                                       color='cyan', fontsize=13, fontweight='bold',
+                        # Color: red if error > 1mm, cyan if within tolerance
+                        text_color = 'red' if error > 1.0 else 'cyan'
+                        
+                        axes[0].text(mid_x, mid_y, 
+                                       f'{mm_dist:.2f}mm',
+                                       color=text_color, fontsize=9, fontweight='bold',
                                        ha='center', va='center',
                                        bbox=dict(boxstyle='round,pad=0.5', facecolor='black', alpha=0.9))
             
-            axes[1, 0].set_title('Field with Angles & Side Lengths', fontweight='bold', fontsize=14)
-            axes[1, 0].axis('off')
+            axes[0].set_title('Field with Angles & Side Lengths', fontweight='bold', fontsize=14)
+            axes[0].axis('off')
             
-            # Panel 4: Summary
-            axes[1, 1].axis('off')
-            status_symbol = '✅' if validation['is_valid'] else '❌'
-            status_text = 'PASS' if validation['is_valid'] else 'FAIL'
+            # Panel 2: Summary
+            axes[1].axis('off')
+            # Overall status: PASS only if both size and shape are valid
+            overall_valid = validation['is_valid'] and (size_validation and size_validation.get('is_valid', False))
+            status_symbol = '✅' if overall_valid else '❌'
+            status_text = 'PASS' if overall_valid else 'FAIL'
+            
+            # Get acquisition date from metadata
+            acquisition_date = metadata.get('acquisition_date', 'Unknown')
             
             summary_lines = [
-                f"FIELD VALIDATION - IMAGE {image_index}",
+                f"IMAGE {image_index}",
+                f"Date: {acquisition_date}",
                 f"",
                 f"Status: {status_symbol} {status_text}",
                 f"",
@@ -221,9 +286,9 @@ class MVICTest(BaseTest):
                     )
             
             summary_text = '\n'.join(summary_lines)
-            axes[1, 1].text(0.05, 0.95, summary_text, transform=axes[1, 1].transAxes,
+            axes[1].text(0.05, 0.95, summary_text, transform=axes[1].transAxes,
                            fontsize=11, verticalalignment='top', fontfamily='monospace')
-            axes[1, 1].set_title('Summary', fontweight='bold', fontsize=14)
+            axes[1].set_title('Summary', fontweight='bold', fontsize=14)
             
             plt.tight_layout()
             
@@ -232,7 +297,10 @@ class MVICTest(BaseTest):
             plt.savefig(buffer, format='png', dpi=150, bbox_inches='tight')
             buffer.seek(0)
             image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
-            plt.close()
+            
+            # Close figure and clear buffer to free memory
+            plt.close(fig)
+            buffer.close()
             
             return f'data:image/png;base64,{image_base64}'
             
@@ -298,12 +366,12 @@ class MVICTest(BaseTest):
             filename = os.path.basename(filepath)
             
             try:
-                # Ajouter l'information du fichier
+                # Add image info result (like MLC does)
                 self.add_result(
-                    name=f"image_{i}_fichier",
-                    value=filename,
+                    name=f"Image {i}: {filename}",
+                    value=f"Acquisition: {acquisition_date.strftime('%Y-%m-%d %H:%M:%S')}",
                     status="INFO",
-                    details=f"Date d'acquisition: {acquisition_date.strftime('%Y-%m-%d %H:%M:%S')}"
+                    details="Analysis Type: Field Size and Shape Validation"
                 )
                 
                 # ========== VALIDATION DE LA TAILLE ==========
@@ -312,88 +380,23 @@ class MVICTest(BaseTest):
                 if size_result and size_result['dimensions']:
                     dimensions = size_result['dimensions']
                     validation = size_result['validation']
-                    
-                    # Résultat: Taille détectée
-                    self.add_result(
-                        name=f"image_{i}_taille_detectee",
-                        value=f"{dimensions['width_mm']:.2f} × {dimensions['height_mm']:.2f}",
-                        status="INFO",
-                        unit="mm",
-                        details=f"Dimensions du champ détectées (Image {i})"
-                    )
-                    
-                    # Résultat: Validation de la taille
-                    if validation['is_valid']:
-                        self.add_result(
-                            name=f"image_{i}_validation_taille",
-                            value=validation['matched_size'],
-                            status="PASS",
-                            unit="mm",
-                            tolerance="±1mm",
-                            details=f"Erreur: ±{validation['width_error']:.2f}mm (largeur), ±{validation['height_error']:.2f}mm (hauteur)"
-                        )
-                    else:
-                        self.add_result(
-                            name=f"image_{i}_validation_taille",
-                            value=f"{dimensions['width_mm']:.2f}×{dimensions['height_mm']:.2f}",
-                            status="FAIL",
-                            unit="mm",
-                            tolerance="±1mm",
-                            details=validation['message']
-                        )
-                else:
-                    self.add_result(
-                        name=f"image_{i}_validation_taille",
-                        value="Erreur",
-                        status="FAIL",
-                        details=f"Impossible de détecter les dimensions du champ (Image {i})"
-                    )
                 
                 # ========== VALIDATION DE LA FORME ==========
                 # Generate visualization with dimensions from size validation
+                # Note: Visualization is generated as base64 (no physical file created)
                 viz_base64 = self._generate_visualization_with_dimensions(
                     filepath, 
                     dimensions if size_result and size_result.get('dimensions') else None,
+                    validation if size_result and size_result.get('validation') else None,
                     i
                 )
                 
-                shape_result = self.shape_validator.process_image(filepath)
+                # Process without saving PNG files (visualization is generated as base64)
+                shape_result = self.shape_validator.process_image(filepath, save_visualization=False)
                 
                 if shape_result and shape_result['validation']:
                     validation = shape_result['validation']
                     angle_data = shape_result['angle_data']
-                    
-                    # Résultat: Angles des coins
-                    if validation['angles']:
-                        angles_str = ", ".join([f"{a['angle']:.2f}°" for a in validation['angles']])
-                        self.add_result(
-                            name=f"image_{i}_angles_coins",
-                            value=angles_str,
-                            status="INFO",
-                            unit="°",
-                            details=f"Angles mesurés (Image {i})"
-                        )
-                    
-                    # Résultat: Validation de la forme
-                    if validation['is_valid']:
-                        self.add_result(
-                            name=f"image_{i}_validation_forme",
-                            value="Tous les angles à 90°",
-                            status="PASS",
-                            unit="°",
-                            tolerance="±1°",
-                            details=validation['message']
-                        )
-                    else:
-                        invalid_count = len(validation['invalid_angles'])
-                        self.add_result(
-                            name=f"image_{i}_validation_forme",
-                            value=f"{invalid_count} angle(s) hors tolérance",
-                            status="FAIL",
-                            unit="°",
-                            tolerance="±1°",
-                            details=validation['message']
-                        )
                     
                     # Add visualization with base64 encoding (like mlc_leaf_jaw)
                     if viz_base64:
@@ -406,26 +409,13 @@ class MVICTest(BaseTest):
                             'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
                             'statistics': {
                                 'status': 'PASS' if validation['is_valid'] and (size_result and size_result['validation']['is_valid']) else 'FAIL',
-                                'field_size': f"{dimensions['width_mm']:.1f}x{dimensions['height_mm']:.1f}mm" if dimensions else 'N/A',
+                                'field_size': f"{dimensions['width_mm']:.2f}x{dimensions['height_mm']:.2f}mm" if dimensions else 'N/A',
                                 'angles_valid': f"{len([a for a in validation['angles'] if a['is_valid']])}/{len(validation['angles'])}"
                             }
                         })
-                else:
-                    self.add_result(
-                        name=f"image_{i}_validation_forme",
-                        value="Erreur",
-                        status="FAIL",
-                        details=f"Impossible de détecter les angles du champ (Image {i})"
-                    )
                 
             except Exception as e:
                 logger.error(f"Error processing {filename}: {e}")
-                self.add_result(
-                    name=f"image_{i}_erreur",
-                    value=str(e),
-                    status="FAIL",
-                    details=f"Erreur lors du traitement de l'image {i}: {str(e)}"
-                )
         
         # Calculer le résultat global
         self.calculate_overall_result()

@@ -14,7 +14,7 @@ from pathlib import Path
 class FieldSizeValidator:
     def __init__(self):
         # Detection parameters (from mlc_leaf_and_jaw scripts)
-        self.tolerance_threshold = 115  # Binary threshold at 50%
+        self.tolerance_threshold = 255 * 0.5  # Binary threshold at 50%
         self.tolerance_kernel_size = 3  # Morphological operations kernel
         self.min_area = 200  # Minimum contour area in pixels
         self.merge_distance_px = 40  # Distance for merging nearby contours
@@ -47,8 +47,14 @@ class FieldSizeValidator:
             
             # Extract RT Image Position
             rt_image_position = ds.RTImagePosition
-            rt_image_pos_x = float(rt_image_position[0])  # mm from patient origin (X)
-            rt_image_pos_y = float(rt_image_position[1])  # mm from patient origin (Y)
+            rt_image_pos_x = float(rt_image_position[0])
+            rt_image_pos_y = float(rt_image_position[1])
+            
+            # Extract acquisition date
+            acquisition_date = getattr(ds, 'AcquisitionDate', getattr(ds, 'ContentDate', 'Unknown'))
+            if acquisition_date != 'Unknown' and len(acquisition_date) == 8:
+                # Format YYYYMMDD to YYYY-MM-DD
+                acquisition_date = f"{acquisition_date[:4]}-{acquisition_date[4:6]}-{acquisition_date[6:]}"
             
             metadata = {
                 'SAD': SAD,
@@ -57,7 +63,8 @@ class FieldSizeValidator:
                 'pixel_spacing_x': pixel_spacing_x,
                 'pixel_spacing_y': pixel_spacing_y,
                 'rt_image_pos_x': rt_image_pos_x,
-                'rt_image_pos_y': rt_image_pos_y
+                'rt_image_pos_y': rt_image_pos_y,
+                'acquisition_date': acquisition_date
             }
             
             return image_array, ds, metadata
@@ -327,7 +334,7 @@ class FieldSizeValidator:
             'detected_height': height,
             'width_error': None,
             'height_error': None,
-            'message': f'Field size {width:.1f}x{height:.1f}mm does not match any expected size (±{self.size_tolerance}mm tolerance)'
+            'message': f'Field size {width:.2f}x{height:.2f}mm does not match any expected size (±{self.size_tolerance}mm tolerance)'
         }
     
     def process_image(self, filepath):
