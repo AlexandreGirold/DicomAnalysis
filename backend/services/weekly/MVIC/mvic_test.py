@@ -361,6 +361,9 @@ class MVICTest(BaseTest):
         for i, (filepath, dt) in enumerate(files_with_datetime, 1):
             logger.info(f"  {i}. {os.path.basename(filepath)} - {dt.strftime('%Y-%m-%d %H:%M:%S')}")
         
+        # Store database info for each image
+        image_db_data = []
+        
         # Traiter chaque fichier
         for i, (filepath, acquisition_date) in enumerate(files_with_datetime, 1):
             filename = os.path.basename(filepath)
@@ -377,25 +380,29 @@ class MVICTest(BaseTest):
                 # ========== VALIDATION DE LA TAILLE ==========
                 size_result = self.size_validator.process_image(filepath)
                 
+                dimensions = None
+                size_validation = None
                 if size_result and size_result['dimensions']:
                     dimensions = size_result['dimensions']
-                    validation = size_result['validation']
+                    size_validation = size_result['validation']
                 
                 # ========== VALIDATION DE LA FORME ==========
                 # Generate visualization with dimensions from size validation
                 # Note: Visualization is generated as base64 (no physical file created)
                 viz_base64 = self._generate_visualization_with_dimensions(
                     filepath, 
-                    dimensions if size_result and size_result.get('dimensions') else None,
-                    validation if size_result and size_result.get('validation') else None,
+                    dimensions,
+                    size_validation,
                     i
                 )
                 
                 # Process without saving PNG files (visualization is generated as base64)
                 shape_result = self.shape_validator.process_image(filepath, save_visualization=False)
                 
+                angle_validation = None
+                angle_data = None
                 if shape_result and shape_result['validation']:
-                    validation = shape_result['validation']
+                    angle_validation = shape_result['validation']
                     angle_data = shape_result['angle_data']
                     
                     # Add visualization with base64 encoding (like mlc_leaf_jaw)
@@ -408,27 +415,91 @@ class MVICTest(BaseTest):
                             'index': i,
                             'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
                             'statistics': {
-                                'status': 'PASS' if validation['is_valid'] and (size_result and size_result['validation']['is_valid']) else 'FAIL',
+                                'status': 'PASS' if angle_validation['is_valid'] and (size_result and size_result['validation']['is_valid']) else 'FAIL',
                                 'field_size': f"{dimensions['width_mm']:.2f}x{dimensions['height_mm']:.2f}mm" if dimensions else 'N/A',
-                                'angles_valid': f"{len([a for a in validation['angles'] if a['is_valid']])}/{len(validation['angles'])}"
+                                'angles_valid': f"{len([a for a in angle_validation['angles'] if a['is_valid']])}/{len(angle_validation['angles'])}"
                             }
                         })
                 
+                # Collect data for database
+                if dimensions and angle_data and 'angles' in angle_data:
+                    angles_list = [a['angle'] for a in angle_data['angles']]
+                    avg_angle = np.mean(angles_list) if angles_list else None
+                    std_angle = np.std(angles_list) if angles_list else None
+                    
+                    image_db_data.append({
+                        'width_mm': dimensions['width_mm'],
+                        'height_mm': dimensions['height_mm'],
+                        'avg_angle': avg_angle,
+                        'angle_std_dev': std_angle
+                    })
+                else:
+                    # Store None values if data is missing
+                    image_db_data.append({
+                        'width_mm': None,
+                        'height_mm': None,
+                        'avg_angle': None,
+                        'angle_std_dev': None
+                    })
+                
             except Exception as e:
                 logger.error(f"Error processing {filename}: {e}")
+                # Store None values on error
+                image_db_data.append({
+                    'width_mm': None,
+                    'height_mm': None,
+                    'avg_angle': None,
+                    'angle_std_dev': None
+                })
         
         # Calculer le résultat global
         self.calculate_overall_result()
         
+        # Save to MVIC database
+        try:
+            # Import database functions
+            import database as db
+            
+            # Prepare database parameters
+            db_params = {
+                'test_date': test_date or datetime.now(),
+                'operator': operator,
+                'notes': notes,
+                'overall_result': self.overall_result
+            }
+            
+            # Add data for each image
+            for i, img_data in enumerate(image_db_data, 1):
+                db_params[f'image{i}_width_mm'] = img_data['width_mm']
+                db_params[f'image{i}_height_mm'] = img_data['height_mm']
+                db_params[f'image{i}_avg_angle'] = img_data['avg_angle']
+                db_params[f'image{i}_angle_std_dev'] = img_data['angle_std_dev']
+            
+            # Save to database
+            test_id = db.save_mvic_test_session(**db_params)
+            logger.info(f"Saved MVIC test to database with ID: {test_id}")
+            
+            # Add test_id to result
+            self.test_id = test_id
+            
+        except Exception as e:
+            logger.error(f"Failed to save MVIC test to database: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+        
         return self.to_dict()
     
     def to_dict(self):
-        """Override to_dict to include visualizations"""
+        """Override to_dict to include visualizations and test_id"""
         result = super().to_dict()
         
         # Add visualizations to the output
         if self.visualizations:
             result['visualizations'] = self.visualizations
+        
+        # Add test_id if saved to database
+        if hasattr(self, 'test_id'):
+            result['test_id'] = self.test_id
         
         return result
     

@@ -29,6 +29,16 @@ function displayTestResults(result) {
     } else {
         document.getElementById('testVisualizations').style.display = 'none';
     }
+    
+    // Show the save button
+    const saveBtn = document.getElementById('saveTestBtn');
+    if (saveBtn) {
+        saveBtn.style.display = 'inline-block';
+        console.log('Save button shown in displayTestResults');
+    }
+    
+    // Store the result for saving later
+    window.CURRENT_TEST_RESULT = result;
 }
 
 function displayVisualizations(visualizations) {

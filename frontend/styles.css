@@ -411,6 +411,17 @@ tbody tr:hover {
     padding: 10px 20px;
 }
 
+/* Trend Actions */
+.trend-actions {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.trend-actions .btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
 /* Filter Section */
 .filter-card {
     background: linear-gradient(135deg, #f0fdf4, #dcfce7);

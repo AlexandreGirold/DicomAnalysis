@@ -14,7 +14,7 @@ from pathlib import Path
 class FieldSizeValidator:
     def __init__(self):
         # Detection parameters (from mlc_leaf_and_jaw scripts)
-        self.tolerance_threshold = 255 * 0.5  # Binary threshold at 50%
+        self.tolerance_threshold = 255 * 0.48  # Binary threshold
         self.tolerance_kernel_size = 3  # Morphological operations kernel
         self.min_area = 200  # Minimum contour area in pixels
         self.merge_distance_px = 40  # Distance for merging nearby contours

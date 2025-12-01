@@ -10,3 +10,5 @@ pydantic==2.12.2
 scipy
 matplotlib
 beautifulsoup4==4.12.3
+reportlab==4.0.7
+pandas==2.2.0

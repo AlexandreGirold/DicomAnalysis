@@ -135,6 +135,7 @@ async function handleRegularTest(capturedFormData, testId) {
     hideLoading();
     
     displayTestResults(result);
+    enableMLCTestSave(result);
 }
 
 async function handleFileUploadTest(capturedFormData, testId) {
@@ -162,6 +163,10 @@ async function handleFileUploadTest(capturedFormData, testId) {
     hideLoading();
     
     displayTestResults(result);
+    
+    // Pass test type to save function
+    const testType = testId === 'mvic' ? 'mvic' : 'mlc';
+    enableMLCTestSave(result, testType);
 }
 
 // Initialize form submission handler

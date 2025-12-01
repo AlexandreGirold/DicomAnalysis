@@ -52,8 +52,8 @@ echo The browser will open in 3 seconds...
 echo Press Ctrl+C to stop the server
 echo.
 
-:: Wait 3 seconds then open browser
-timeout /t 3 /nobreak >nul
+:: Wait 4 seconds then open browser
+timeout /t 4 /nobreak >nul
 start http://localhost:8000
 
 :: Start the server

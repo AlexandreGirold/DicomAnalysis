@@ -78,7 +78,9 @@
                 </div>
                 
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="newTest()">Run Another Test</button>
+                    <button id="saveTestBtn" class="btn btn-success" onclick="saveMLCTestToDatabase()" style="display: none;">
+                        💾 Save Test to Database
+                    </button>
                     <button class="btn btn-secondary" onclick="printResults()">Print Results</button>
                 </div>
             </section>
@@ -125,6 +127,7 @@
     <script src="/static/js/form-builder.js?v=3"></script>
     <script src="/static/js/test-execution.js?v=3"></script>
     <script src="/static/js/results-display.js?v=3"></script>
+    <script src="/static/js/mlc-save.js?v=1"></script>
     <script src="/static/js/main.js?v=3"></script>
 </body>
 </html>
