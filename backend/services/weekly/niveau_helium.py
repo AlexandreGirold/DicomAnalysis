@@ -18,7 +18,7 @@ class NiveauHeliumTest(BaseTest):
             test_name="Niveau d'Hélium",
             description="ANSM - Test du niveau d'hélium - Doit être supérieur à 65%"
         )
-        self.minimum_level = 65.0  # Minimum helium level percentage
+        self.minimum_level = 65.0  
     
     def execute(self, helium_level: float, operator: str, test_date: Optional[datetime] = None):
         """
@@ -32,21 +32,15 @@ class NiveauHeliumTest(BaseTest):
         Returns:
             dict: Test results
         """
-        # Set test information
         self.set_test_info(operator, test_date)
-        
-        # Add input
         self.add_input("helium_level", helium_level, "%")
         
-        # Validate input
         if helium_level < 0 or helium_level > 100:
             raise ValueError("Helium level must be between 0 and 100%")
         
-        # Perform test calculation
         is_above_threshold = helium_level > self.minimum_level
         status = "PASS" if is_above_threshold else "FAIL"
         
-        # Add result
         self.add_result(
             name="helium_level_check",
             value=helium_level,
@@ -55,8 +49,7 @@ class NiveauHeliumTest(BaseTest):
             tolerance=f"> {self.minimum_level}%"
         )
         
-        # Calculate overall result
-        self.calculate_overall_result()
+        self.calculate_overall_result() # here it's only one result
         
         return self.to_dict()
     
@@ -67,7 +60,8 @@ class NiveauHeliumTest(BaseTest):
         Returns:
             dict: Form configuration
         """
-        return {
+        return 
+    {
             'title': 'ANSM - Niveau d\'Hélium',
             'description': 'Test du niveau d\'hélium - Doit être supérieur à 65%',
             'fields': [

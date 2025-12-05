@@ -8,7 +8,7 @@ from .alignement_laser import AlignementLaserTest, test_alignement_laser
 from .quasar import QuasarTest, test_quasar
 from .indice_quality import IndiceQualityTest, test_indice_quality
 
-# Monthly test registry
+# Add neww monthly tests here 
 MONTHLY_TESTS = {
     'position_table_v2': {
         'class': PositionTableV2Test,

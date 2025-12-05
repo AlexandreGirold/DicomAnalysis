@@ -164,7 +164,6 @@ class FieldEdgeDetector:
         
         return merged_contours
     
-    # Visualization removed - values only for monthly trend analysis
     
     def process_image(self, filepath):
         """Process a single DICOM image to detect field edges

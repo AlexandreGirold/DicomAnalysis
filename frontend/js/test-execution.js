@@ -1,5 +1,7 @@
 /**
  * Test Execution Logic
+ * ce fichier permet d'enregitrer les doness des formulaires de tests et de les envoyer
+ *  au backend pour exécution (grace a fetch API )
  */
 
 async function openTest(testId) {
@@ -57,7 +59,8 @@ async function handleTestSubmission(e) {
         const capturedFormData = new FormData(testForm);
         
         console.log('Captured form data entries:');
-        for (let [key, value] of capturedFormData.entries()) {
+        for (let [key, value] of capturedFormData.entries())
+            {
             console.log(`${key}:`, value);
         }
         
