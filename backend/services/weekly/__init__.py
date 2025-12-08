@@ -6,6 +6,7 @@ all the weekly tests, this is the same for monthly and daily and if added later 
 from .niveau_helium import NiveauHeliumTest, test_helium_level
 from .PIQT import PIQTTest, test_piqt
 from .MVIC import MVICTest, test_mvic
+from .MVIC_fente import MVICFenteTest, test_mvic_fente, MVICFenteV2Test, test_mvic_fente_v2
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,6 +39,18 @@ WEEKLY_TESTS = {
         'class': PIQTTest,
         'function': test_piqt,
         'description': 'PIQT - Philips Image Quality Test - Parse rapport HTML',
+        'category': 'weekly'
+    },
+    'mvic_fente': {
+        'class': MVICFenteTest,
+        'function': test_mvic_fente,
+        'description': 'MVIC Fente - Analyse des fentes MLC individuelles - Largeur, hauteur, séparation',
+        'category': 'weekly'
+    },
+    'mvic_fente_v2': {
+        'class': MVICFenteV2Test,
+        'function': test_mvic_fente_v2,
+        'description': 'MVIC Fente V2 - Détection par contours (méthode ImageJ) - Largeur et espacement',
         'category': 'weekly'
     }
 }

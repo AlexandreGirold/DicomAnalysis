@@ -68,7 +68,7 @@ async function handleTestSubmission(e) {
         let isFileUploadTest = false;
         if (window.APP_STATE.currentFormData && window.APP_STATE.currentFormData.file_upload) {
             isFileUploadTest = true;
-        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic') {
+        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic' || testId === 'mvic_fente') {
             isFileUploadTest = true;
         }
         
@@ -145,9 +145,14 @@ async function handleFileUploadTest(capturedFormData, testId) {
     console.log('Submitting file upload test to:', testId);
     
     // Use specific endpoint for the test
-    const endpoint = testId === 'mlc_leaf_jaw' 
-        ? `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`
-        : `${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`;
+    let endpoint;
+    if (testId === 'mlc_leaf_jaw') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`;
+    } else if (testId === 'mvic_fente') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mvic_fente`;
+    } else {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`;
+    }
     
     console.log('Upload endpoint:', endpoint);
     
@@ -168,7 +173,12 @@ async function handleFileUploadTest(capturedFormData, testId) {
     displayTestResults(result);
     
     // Pass test type to save function
-    const testType = testId === 'mvic' ? 'mvic' : 'mlc';
+    let testType = 'mlc';
+    if (testId === 'mvic') {
+        testType = 'mvic';
+    } else if (testId === 'mvic_fente') {
+        testType = 'mvic_fente';
+    }
     enableMLCTestSave(result, testType);
 }
 

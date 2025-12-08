@@ -60,8 +60,7 @@ class NiveauHeliumTest(BaseTest):
         Returns:
             dict: Form configuration
         """
-        return 
-    {
+        return {
             'title': 'ANSM - Niveau d\'Hélium',
             'description': 'Test du niveau d\'hélium - Doit être supérieur à 65%',
             'fields': [

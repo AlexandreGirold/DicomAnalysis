@@ -112,6 +112,13 @@ function previousVisualization() {
     }
 }
 
+function nextVisualization() {
+    if (window.APP_STATE.currentVisualizationIndex < window.APP_STATE.allVisualizations.length - 1) {
+        window.APP_STATE.currentVisualizationIndex++;
+        displayCurrentVisualization();
+    }
+}
+
 function openImageModal(imageSrc, title) {
     const modal = document.createElement('div');
     modal.className = 'image-modal';

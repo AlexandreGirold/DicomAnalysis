@@ -1802,6 +1802,246 @@ async def execute_mvic(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/basic-tests/mvic_fente")
+@app.post("/basic-tests/mvic-fente")
+async def execute_mvic_fente(request: Request):
+    """
+    Execute MVIC Fente test with DICOM file upload
+    Analyzes individual MLC leaf precision
+    """
+    logger.info("[BASIC-TESTS] Executing MVIC Fente test")
+    
+    file_paths = []
+    
+    try:
+        # Parse form data
+        form = await request.form()
+        logger.info(f"[BASIC-TESTS] Form keys: {list(form.keys())}")
+        
+        # Extract operator
+        operator_field = form.get("operator")
+        if isinstance(operator_field, list):
+            operator = operator_field[0] if operator_field else None
+        else:
+            operator = operator_field
+            
+        if not operator:
+            raise HTTPException(status_code=400, detail="operator is required")
+        
+        # Extract test_date (optional)
+        test_date_field = form.get("test_date") 
+        if isinstance(test_date_field, list):
+            test_date = test_date_field[0] if test_date_field else None
+        else:
+            test_date = test_date_field
+        
+        # Extract notes (optional)
+        notes_field = form.get("notes")
+        if isinstance(notes_field, list):
+            notes = notes_field[0] if notes_field else None
+        else:
+            notes = notes_field
+        
+        # Extract file
+        dicom_files = []
+        possible_file_fields = ['dicom_files', 'files']
+        for field_name in possible_file_fields:
+            field_value = form.get(field_name)
+            if field_value:
+                if isinstance(field_value, list):
+                    for item in field_value:
+                        if hasattr(item, 'filename'):
+                            dicom_files.append(item)
+                else:
+                    if hasattr(field_value, 'filename'):
+                        dicom_files.append(field_value)
+                break
+        
+        if not dicom_files:
+            raise HTTPException(status_code=400, detail="At least one DICOM file is required")
+        
+        logger.info(f"[BASIC-TESTS] Operator: {operator}")
+        logger.info(f"[BASIC-TESTS] Test date: {test_date}")
+        logger.info(f"[BASIC-TESTS] Number of files: {len(dicom_files)}")
+        
+        # Create upload directory
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save uploaded file
+        file_paths = []
+        for file in dicom_files:
+            file_path = os.path.join(upload_dir, file.filename)
+            with open(file_path, "wb") as buffer:
+                content = await file.read()
+                buffer.write(content)
+            file_paths.append(file_path)
+            logger.info(f"[BASIC-TESTS] Saved: {file.filename}")
+        
+        # Parse test date if provided
+        parsed_test_date = None
+        if test_date:
+            try:
+                parsed_test_date = datetime.fromisoformat(test_date.replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    parsed_test_date = datetime.strptime(test_date, '%Y-%m-%d')
+                except ValueError:
+                    pass
+        
+        # Execute test
+        from services.weekly.MVIC_fente import MVICFenteTest
+        test = MVICFenteTest()
+        result = test.execute(
+            files=file_paths,
+            operator=operator,
+            test_date=parsed_test_date,
+            notes=notes or ""
+        )
+        
+        # Clean up uploaded files
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.info(f"[BASIC-TESTS] MVIC Fente test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except Exception as e:
+        # Clean up files on error
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.error(f"[BASIC-TESTS] Error executing MVIC Fente test: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/basic-tests/mvic_fente_v2")
+@app.post("/basic-tests/mvic-fente-v2")
+async def execute_mvic_fente_v2(request: Request):
+    """
+    Execute MVIC Fente V2 test with DICOM file upload
+    Analyzes MLC slits using edge detection (ImageJ method)
+    """
+    logger.info("[BASIC-TESTS] Executing MVIC Fente V2 test")
+    
+    file_paths = []
+    
+    try:
+        # Parse form data
+        form = await request.form()
+        logger.info(f"[BASIC-TESTS] Form keys: {list(form.keys())}")
+        
+        # Extract operator
+        operator_field = form.get("operator")
+        if isinstance(operator_field, list):
+            operator = operator_field[0] if operator_field else None
+        else:
+            operator = operator_field
+            
+        if not operator:
+            raise HTTPException(status_code=400, detail="operator is required")
+        
+        # Extract test_date (optional)
+        test_date_field = form.get("test_date") 
+        if isinstance(test_date_field, list):
+            test_date = test_date_field[0] if test_date_field else None
+        else:
+            test_date = test_date_field
+        
+        # Extract notes (optional)
+        notes_field = form.get("notes")
+        if isinstance(notes_field, list):
+            notes = notes_field[0] if notes_field else None
+        else:
+            notes = notes_field
+        
+        # Extract file
+        dicom_files = []
+        possible_file_fields = ['dicom_files', 'files']
+        for field_name in possible_file_fields:
+            field_value = form.get(field_name)
+            if field_value:
+                if isinstance(field_value, list):
+                    for item in field_value:
+                        if hasattr(item, 'filename'):
+                            dicom_files.append(item)
+                else:
+                    if hasattr(field_value, 'filename'):
+                        dicom_files.append(field_value)
+                break
+        
+        if not dicom_files:
+            raise HTTPException(status_code=400, detail="At least one DICOM file is required")
+        
+        logger.info(f"[BASIC-TESTS] Operator: {operator}")
+        logger.info(f"[BASIC-TESTS] Test date: {test_date}")
+        logger.info(f"[BASIC-TESTS] Number of files: {len(dicom_files)}")
+        
+        # Create upload directory
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save uploaded file
+        file_paths = []
+        for file in dicom_files:
+            file_path = os.path.join(upload_dir, file.filename)
+            with open(file_path, "wb") as buffer:
+                content = await file.read()
+                buffer.write(content)
+            file_paths.append(file_path)
+            logger.info(f"[BASIC-TESTS] Saved: {file.filename}")
+        
+        # Parse test date if provided
+        parsed_test_date = None
+        if test_date:
+            try:
+                parsed_test_date = datetime.fromisoformat(test_date.replace('Z', '+00:00'))
+            except ValueError:
+                try:
+                    parsed_test_date = datetime.strptime(test_date, '%Y-%m-%d')
+                except ValueError:
+                    pass
+        
+        # Execute test
+        from services.weekly.MVIC_fente import MVICFenteV2Test
+        test = MVICFenteV2Test()
+        result = test.execute(
+            files=file_paths,
+            operator=operator,
+            test_date=parsed_test_date,
+            notes=notes or ""
+        )
+        
+        # Clean up uploaded files
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.info(f"[BASIC-TESTS] MVIC Fente V2 test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except Exception as e:
+        # Clean up files on error
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.error(f"[BASIC-TESTS] Error executing MVIC Fente V2 test: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/basic-tests/{test_id}")
 async def execute_basic_test_generic(test_id: str, data: dict):
     """
