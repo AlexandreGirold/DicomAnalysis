@@ -17,7 +17,13 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import base64
 from io import BytesIO
-from database import SessionLocal, MVCenterConfig
+import sys
+import os
+# Add backend root to path for mv_center_utils import
+backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, backend_root)
+
+from mv_center_utils import get_mv_center
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +45,7 @@ class MVICFenteV2Test(BaseTest):
             description="Analyse des fentes MLC - Largeur et espacement entre fentes"
         )
         # MV center coordinates (retrieved from database)
-        self.center_u, self.center_v = self._get_mv_center_from_db()
+        self.center_u, self.center_v = get_mv_center()
         
         # Detection parameters
         self.pixel_size_mm = 0.216  # mm/pixel (default, will be updated from DICOM)
@@ -69,6 +75,12 @@ class MVICFenteV2Test(BaseTest):
             dict: Test results with slit measurements
         """
         self.set_test_info(operator, test_date)
+        
+        # Store filenames for database
+        self.dicom_files = files
+        
+        # Initialize file_results for image-to-result mapping
+        self.file_results = []
         
         if notes:
             self.notes = notes
@@ -121,6 +133,29 @@ class MVICFenteV2Test(BaseTest):
                         }
                         visualization_files.append(viz_obj)
                     
+                    # Get acquisition datetime for file_results
+                    acquisition_date = None
+                    if hasattr(dcm, 'AcquisitionDate') and hasattr(dcm, 'AcquisitionTime'):
+                        try:
+                            date_str = str(dcm.AcquisitionDate)
+                            time_str = str(dcm.AcquisitionTime).split('.')[0]
+                            acquisition_date = datetime.strptime(f"{date_str}{time_str}", "%Y%m%d%H%M%S").strftime('%Y-%m-%d %H:%M:%S')
+                        except:
+                            acquisition_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    # Add to file_results for image-to-result mapping
+                    self.file_results.append({
+                        'filename': Path(file_path).name,
+                        'filepath': file_path,
+                        'image_number': idx,
+                        'acquisition_date': acquisition_date,
+                        'analysis_type': 'MLC Slit Analysis (Edge Detection)',
+                        'num_slits': 0,
+                        'slits': [],
+                        'pixel_spacing': getattr(self, 'pixel_spacing', None),
+                        'status': 'WARNING'
+                    })
+                    
                     # Add empty result for this image
                     image_result = {
                         'file': Path(file_path).name,
@@ -154,6 +189,29 @@ class MVICFenteV2Test(BaseTest):
                     }
                     visualization_files.append(viz_obj)
                     logger.info(f"[MVIC-FENTE-V2] Added visualization {idx} to list. Total: {len(visualization_files)}")
+                
+                # Get acquisition datetime for file_results
+                acquisition_date = None
+                if hasattr(dcm, 'AcquisitionDate') and hasattr(dcm, 'AcquisitionTime'):
+                    try:
+                        date_str = str(dcm.AcquisitionDate)
+                        time_str = str(dcm.AcquisitionTime).split('.')[0]
+                        acquisition_date = datetime.strptime(f"{date_str}{time_str}", "%Y%m%d%H%M%S").strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        acquisition_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Add to file_results for image-to-result mapping
+                self.file_results.append({
+                    'filename': Path(file_path).name,
+                    'filepath': file_path,
+                    'image_number': idx,
+                    'acquisition_date': acquisition_date,
+                    'analysis_type': 'MLC Slit Analysis (Edge Detection)',
+                    'num_slits': slits_data['num_slits'],
+                    'slits': slits_data['slits'],
+                    'pixel_spacing': getattr(self, 'pixel_spacing', None),
+                    'status': 'PASS'
+                })
                 
                 # Store results
                 image_result = {
@@ -201,29 +259,6 @@ class MVICFenteV2Test(BaseTest):
         logger.info(f"[MVIC-FENTE-V2] Total detailed results: {len(all_results)}")
         
         return result
-    
-    def _get_mv_center_from_db(self) -> Tuple[float, float]:
-        """Retrieve MV center coordinates from database"""
-        try:
-            db = SessionLocal()
-            config = db.query(MVCenterConfig).first()
-            if config:
-                logger.info(f"[MVIC-FENTE-V2] MV center from database: u={config.u}, v={config.v}")
-                return config.u, config.v
-            else:
-                # Create default config if not exists
-                default_config = MVCenterConfig(u=511.03, v=652.75)
-                db.add(default_config)
-                db.commit()
-                logger.info(f"[MVIC-FENTE-V2] Created default MV center: u=511.03, v=652.75")
-                return 511.03, 652.75
-        except Exception as e:
-            logger.error(f"[MVIC-FENTE-V2] Error retrieving MV center from database: {e}")
-            # Fallback to default
-            return 511.03, 652.75
-        finally:
-            if 'db' in locals():
-                db.close()
     
     def _update_pixel_spacing_from_dicom(self, dcm) -> None:
         """Calculate pixel spacing at isocenter from DICOM metadata"""
@@ -448,6 +483,78 @@ class MVICFenteV2Test(BaseTest):
             import traceback
             traceback.print_exc()
             return None
+    
+    def save_to_database(self, filenames: Optional[List[str]] = None):
+        """
+        Save MVIC Fente V2 test results to database
+        
+        Args:
+            filenames: Optional list of source DICOM filenames
+        
+        Returns:
+            int: Test ID from database
+        """
+        try:
+            from database_helpers import save_mvic_fente_v2_to_database
+            
+            # Get detailed results from the test
+            detailed_results = []
+            if hasattr(self, 'results'):
+                # Parse results to extract slit data per image
+                for idx, result_key in enumerate(sorted(self.results.keys()), 1):
+                    result_data = self.results[result_key]
+                    if isinstance(result_data, dict) and 'value' in result_data:
+                        # This is a summary result with slit info
+                        image_result = {
+                            'slits': []
+                        }
+                        # Extract slit data from result value
+                        value = result_data.get('value', '')
+                        if 'slits' in value.lower():
+                            # Try to parse slit count
+                            try:
+                                num_slits = int(value.split()[0])
+                                # Create placeholder slit entries
+                                for slit_num in range(1, num_slits + 1):
+                                    image_result['slits'].append({
+                                        'width_mm': 0,  # Would need actual data
+                                        'height_pixels': 0,
+                                        'center_u': None,
+                                        'center_v': None
+                                    })
+                            except:
+                                pass
+                        detailed_results.append(image_result)
+            
+            test_id = save_mvic_fente_v2_to_database(
+                operator=self.operator,
+                test_date=self.test_date,
+                overall_result=self.overall_result,
+                results=detailed_results,
+                notes=self.notes,
+                filenames=filenames
+            )
+            
+            self.test_id = test_id
+            return test_id
+            
+        except Exception as e:
+            logger.error(f"Error saving MVIC Fente V2 test to database: {e}")
+            raise
+    
+    def to_dict(self):
+        """Override to_dict to include filenames and file_results"""
+        result = super().to_dict()
+        
+        # Add filenames at top level for easy database storage
+        if hasattr(self, 'dicom_files') and self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
+        
+        # Add file_results for image-to-result mapping
+        if hasattr(self, 'file_results') and self.file_results:
+            result['file_results'] = self.file_results
+        
+        return result
     
     def get_form_data(self):
         """Get form structure for frontend"""

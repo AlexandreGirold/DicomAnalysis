@@ -11,7 +11,7 @@ async function openTest(testId) {
         showLoading('Loading test form...');
         
         console.log(`Fetching form for test: ${testId}`);
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}/form`);
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute/${testId}/form`);
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Form fetch failed:', response.status, errorText);
@@ -121,7 +121,7 @@ async function handleRegularTest(capturedFormData, testId) {
     
     console.log('Submitting regular test data:', data);
     
-    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`, {
+    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute/${testId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -138,7 +138,8 @@ async function handleRegularTest(capturedFormData, testId) {
     hideLoading();
     
     displayTestResults(result);
-    enableMLCTestSave(result);
+    // Pass testId so save function knows which endpoint to use
+    enableMLCTestSave(result, testId);
 }
 
 async function handleFileUploadTest(capturedFormData, testId) {
@@ -147,11 +148,13 @@ async function handleFileUploadTest(capturedFormData, testId) {
     // Use specific endpoint for the test
     let endpoint;
     if (testId === 'mlc_leaf_jaw') {
-        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`;
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mlc-leaf-jaw`;
     } else if (testId === 'mvic_fente') {
-        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mvic_fente`;
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic_fente`;
+    } else if (testId === 'mvic_fente_v2') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic-fente-v2`;
     } else {
-        endpoint = `${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`;
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/${testId}`;
     }
     
     console.log('Upload endpoint:', endpoint);
@@ -172,14 +175,8 @@ async function handleFileUploadTest(capturedFormData, testId) {
     
     displayTestResults(result);
     
-    // Pass test type to save function
-    let testType = 'mlc';
-    if (testId === 'mvic') {
-        testType = 'mvic';
-    } else if (testId === 'mvic_fente') {
-        testType = 'mvic_fente';
-    }
-    enableMLCTestSave(result, testType);
+    // Pass testId directly - it will be used to look up the correct endpoint
+    enableMLCTestSave(result, testId);
 }
 
 // Initialize form submission handler

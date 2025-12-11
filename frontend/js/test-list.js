@@ -6,7 +6,7 @@ async function loadAvailableTests() {
     const testList = document.getElementById('testList');
     
     try {
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests`);
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute`);
         if (!response.ok) {
             throw new Error('Failed to load tests');
         }

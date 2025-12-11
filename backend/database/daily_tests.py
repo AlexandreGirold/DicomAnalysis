@@ -18,6 +18,17 @@ class SafetySystemsTest(Base):
     upload_date = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     overall_result = Column(String, nullable=False)  # PASS/FAIL/WARNING
     notes = Column(Text, nullable=True)
+    filenames = Column(Text, nullable=True)
+    # Test-specific data columns
+    accelerator_warmup = Column(String, nullable=False)
+    audio_indicator = Column(String, nullable=False)
+    visual_indicators_console = Column(String, nullable=False)
+    visual_indicator_room = Column(String, nullable=False)
+    beam_interruption = Column(String, nullable=False)
+    door_interlocks = Column(String, nullable=False)
+    camera_monitoring = Column(String, nullable=False)
+    patient_communication = Column(String, nullable=False)
+    table_emergency_stop = Column(String, nullable=False)
 
 
 class SafetySystemsResult(Base):

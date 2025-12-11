@@ -1,21 +1,57 @@
 // API Configuration
-const API_BASE_URL = window.location.origin;  // Use same origin as the page
+const API_BASE_URL = window.location.origin;
 
 // State
 let allTests = [];
+let filteredTests = [];
 let selectedTest = null;
+let currentFilters = {
+    testType: '',
+    specificTest: '',
+    startDate: '',
+    endDate: ''
+};
+
+// Test name mapping
+const TEST_DISPLAY_NAMES = {
+    'safety_systems': 'Safety Systems',
+    'niveau_helium': 'Niveau Helium',
+    'mlc_leaf_jaw': 'MLC Leaf & Jaw',
+    'mvic': 'MVIC',
+    'mvic_fente_v2': 'MVIC Fente V2',
+    'piqt': 'PIQT',
+    'position_table_v2': 'Position Table V2',
+    'alignement_laser': 'Alignement Laser',
+    'quasar': 'Quasar',
+    'indice_quality': 'Indice Quality'
+};
+
+// Test frequency mapping
+const TEST_FREQUENCY = {
+    'safety_systems': 'daily',
+    'niveau_helium': 'weekly',
+    'mlc_leaf_jaw': 'weekly',
+    'mvic': 'weekly',
+    'mvic_fente_v2': 'weekly',
+    'piqt': 'weekly',
+    'position_table_v2': 'monthly',
+    'alignement_laser': 'monthly',
+    'quasar': 'monthly',
+    'indice_quality': 'monthly'
+};
 
 // DOM Elements
 const loadingSection = document.getElementById('loadingSection');
 const testsContainer = document.getElementById('testsContainer');
 const testDetailSection = document.getElementById('testDetailSection');
-const filterBtn = document.getElementById('filterBtn');
-const clearFilterBtn = document.getElementById('clearFilterBtn');
+const testTypeFilter = document.getElementById('testTypeFilter');
+const specificTestFilter = document.getElementById('specificTestFilter');
 const startDateInput = document.getElementById('startDate');
 const endDateInput = document.getElementById('endDate');
+const applyFilterBtn = document.getElementById('applyFilterBtn');
+const clearFilterBtn = document.getElementById('clearFilterBtn');
 const deleteTestBtn = document.getElementById('deleteTestBtn');
 const downloadReportBtn = document.getElementById('downloadReportBtn');
-const generateTrendReportBtn = document.getElementById('generateTrendReportBtn');
 const detailVizSelect = document.getElementById('detailVizSelect');
 const detailVisualizationDisplay = document.getElementById('detailVisualizationDisplay');
 const detailSearchInput = document.getElementById('detailSearchInput');
@@ -25,117 +61,255 @@ const detailResultsTableBody = document.getElementById('detailResultsTableBody')
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    loadTests();
-    loadDatabaseStats();
+    loadAllTests();
 });
 
 function setupEventListeners() {
-    filterBtn.addEventListener('click', applyDateFilter);
-    clearFilterBtn.addEventListener('click', clearDateFilter);
+    applyFilterBtn.addEventListener('click', applyFilters);
+    clearFilterBtn.addEventListener('click', clearFilters);
     deleteTestBtn.addEventListener('click', deleteTest);
     downloadReportBtn.addEventListener('click', downloadTestReport);
-    generateTrendReportBtn.addEventListener('click', generateTrendReport);
     detailVizSelect.addEventListener('change', displayDetailVisualization);
     detailSearchInput.addEventListener('input', filterDetailTable);
     detailStatusFilter.addEventListener('change', filterDetailTable);
+    
+    // Update specific test dropdown when test type changes
+    testTypeFilter.addEventListener('change', updateSpecificTestDropdown);
 }
 
-async function loadDatabaseStats() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/database/stats`);
-        const stats = await response.json();
-        
-        document.getElementById('totalTests').textContent = stats.total_tests || 0;
-        document.getElementById('totalMeasurements').textContent = stats.total_blade_measurements || 0;
-        
-        if (stats.oldest_test_date && stats.newest_test_date) {
-            const oldest = new Date(stats.oldest_test_date).toLocaleDateString();
-            const newest = new Date(stats.newest_test_date).toLocaleDateString();
-            document.getElementById('dateRange').textContent = `${oldest} - ${newest}`;
-        } else {
-            document.getElementById('dateRange').textContent = 'No data';
+function updateSpecificTestDropdown() {
+    const testType = testTypeFilter.value;
+    const specificTest = specificTestFilter;
+    
+    // Enable/disable options based on test type filter
+    const options = specificTest.querySelectorAll('option');
+    options.forEach(option => {
+        if (option.value === '') {
+            option.disabled = false;
+            return;
         }
-    } catch (error) {
-        console.error('Error loading stats:', error);
+        
+        if (!testType) {
+            option.disabled = false;
+        } else {
+            const frequency = TEST_FREQUENCY[option.value];
+            option.disabled = frequency !== testType;
+        }
+    });
+    
+    // Reset selection if current selection is now disabled
+    if (specificTest.selectedOptions[0].disabled) {
+        specificTest.value = '';
     }
 }
 
-async function loadTests(startDate = null, endDate = null) {
+async function loadAllTests() {
     loadingSection.style.display = 'block';
     
     try {
-        // Build query parameters
-        let queryParams = 'limit=100';
-        if (startDate) queryParams += `&start_date=${startDate}`;
-        if (endDate) queryParams += `&end_date=${endDate}`;
+        // Fetch all test type endpoints
+        const testEndpoints = [
+            { endpoint: 'safety-systems-sessions', type: 'safety_systems' },
+            { endpoint: 'niveau-helium-sessions', type: 'niveau_helium' },
+            { endpoint: 'mlc-test-sessions', type: 'mlc_leaf_jaw' },
+            { endpoint: 'mvic-test-sessions', type: 'mvic' },
+            { endpoint: 'mvic-fente-v2-sessions', type: 'mvic_fente_v2' },
+            { endpoint: 'piqt-sessions', type: 'piqt' },
+            { endpoint: 'position-table-sessions', type: 'position_table_v2' },
+            { endpoint: 'alignement-laser-sessions', type: 'alignement_laser' },
+            { endpoint: 'quasar-sessions', type: 'quasar' },
+            { endpoint: 'indice-quality-sessions', type: 'indice_quality' }
+        ];
         
-        // Load both MLC and MVIC tests
-        const [mlcResponse, mvicResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/mlc-test-sessions?${queryParams}`),
-            fetch(`${API_BASE_URL}/mvic-test-sessions?${queryParams}`)
-        ]);
-        
-        const mlcData = await mlcResponse.json();
-        const mvicData = await mvicResponse.json();
-        
-        // Tag tests with their type
-        const mlcTests = (mlcData.tests || []).map(test => ({...test, test_type: 'mlc'}));
-        const mvicTests = (mvicData.tests || []).map(test => ({...test, test_type: 'mvic'}));
-        
-        // Combine and sort by date (most recent first)
-        allTests = [...mlcTests, ...mvicTests].sort((a, b) => {
-            return new Date(b.test_date) - new Date(a.test_date);
+        const fetchPromises = testEndpoints.map(async ({ endpoint, type }) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${endpoint}?limit=1000`);
+                if (!response.ok) {
+                    console.warn(`Failed to fetch ${endpoint}: ${response.status}`);
+                    return [];
+                }
+                const data = await response.json();
+                const tests = data.tests || data || [];
+                return tests.map(test => ({
+                    ...test,
+                    test_type: type,
+                    test_frequency: TEST_FREQUENCY[type]
+                }));
+            } catch (error) {
+                console.error(`Error loading ${type}:`, error);
+                return [];
+            }
         });
         
-        displayTests();
+        const results = await Promise.all(fetchPromises);
+        allTests = results.flat().sort((a, b) => {
+            return new Date(b.test_date || b.upload_date) - new Date(a.test_date || a.upload_date);
+        });
+        
+        console.log(`Loaded ${allTests.length} tests total`);
+        
+        // Apply initial filter (show all)
+        applyFilters();
+        
     } catch (error) {
         console.error('Error loading tests:', error);
-        testsContainer.innerHTML = '<p class="placeholder-text">Error loading tests</p>';
+        testsContainer.innerHTML = '<p class="placeholder-text">Error loading tests. Check console for details.</p>';
     } finally {
         loadingSection.style.display = 'none';
     }
 }
 
+function applyFilters() {
+    // Get filter values
+    currentFilters.testType = testTypeFilter.value;
+    currentFilters.specificTest = specificTestFilter.value;
+    currentFilters.startDate = startDateInput.value;
+    currentFilters.endDate = endDateInput.value;
+    
+    // Filter tests
+    filteredTests = allTests.filter(test => {
+        // Filter by test frequency (daily/weekly/monthly)
+        if (currentFilters.testType && test.test_frequency !== currentFilters.testType) {
+            return false;
+        }
+        
+        // Filter by specific test
+        if (currentFilters.specificTest && test.test_type !== currentFilters.specificTest) {
+            return false;
+        }
+        
+        // Filter by date range
+        const testDate = new Date(test.test_date);
+        if (currentFilters.startDate) {
+            const startDate = new Date(currentFilters.startDate);
+            if (testDate < startDate) return false;
+        }
+        if (currentFilters.endDate) {
+            const endDate = new Date(currentFilters.endDate);
+            endDate.setHours(23, 59, 59, 999);
+            if (testDate > endDate) return false;
+        }
+        
+        return true;
+    });
+    
+    displayTests();
+    updateStats();
+}
+
+function clearFilters() {
+    testTypeFilter.value = '';
+    specificTestFilter.value = '';
+    startDateInput.value = '';
+    endDateInput.value = '';
+    
+    currentFilters = {
+        testType: '',
+        specificTest: '',
+        startDate: '',
+        endDate: ''
+    };
+    
+    updateSpecificTestDropdown();
+    applyFilters();
+}
+
 function displayTests() {
-    if (allTests.length === 0) {
-        testsContainer.innerHTML = '<p class="placeholder-text">No tests found. Run some analyses first!</p>';
+    if (filteredTests.length === 0) {
+        testsContainer.innerHTML = '<p class="placeholder-text">No tests found matching current filters</p>';
         return;
     }
     
-    testsContainer.innerHTML = allTests.map(test => {
+    testsContainer.innerHTML = filteredTests.map(test => {
         const testDate = test.test_date ? 
-            new Date(test.test_date).toLocaleString() : 
-            'Unknown';
+            new Date(test.test_date).toLocaleDateString('fr-FR', { 
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            }) : 'Unknown';
         
-        const uploadDate = new Date(test.upload_date).toLocaleString();
-        const result = test.overall_result || 'N/A';
-        const testTypeName = test.test_type === 'mvic' ? 'MVIC' : 'MLC';
+        const uploadDate = new Date(test.upload_date).toLocaleDateString('fr-FR', { 
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        });
+        
+        const result = (test.overall_result || 'N/A').toUpperCase();
+        const testDisplayName = TEST_DISPLAY_NAMES[test.test_type] || test.test_type.toUpperCase();
+        const frequencyBadge = test.test_frequency ? 
+            `<span class="frequency-badge ${test.test_frequency}">${test.test_frequency}</span>` : '';
+        
+        // Determine result class
+        let resultClass = 'result-na';
+        if (result.includes('PASS')) resultClass = 'result-pass';
+        else if (result.includes('FAIL')) resultClass = 'result-fail';
+        else if (result.includes('WARNING')) resultClass = 'result-warning';
+        else if (result.includes('COMPLETE')) resultClass = 'result-complete';
         
         return `
-            <div class="test-card" onclick="viewTestDetail(${test.id}, '${test.test_type}')">
-                <h4>${testTypeName} Test #${test.id}</h4>
-                <div class="test-card-info">👤 Operator: ${test.operator}</div>
-                <div class="test-card-info">📅 Test Date: ${testDate}</div>
-                <div class="test-card-info">⬆️ Upload Date: ${uploadDate}</div>
-                <div class="test-card-info">Result: <strong>${result}</strong></div>
+            <div class="test-item-compact" onclick="viewTestDetail(${test.id}, '${test.test_type}')">
+                <div class="test-item-id">#${test.id}</div>
+                <div class="test-item-name">${testDisplayName}</div>
+                <div>${frequencyBadge}</div>
+                <div class="test-item-operator">👤 ${test.operator}</div>
+                <div class="test-item-date">📅 ${testDate}</div>
+                <div class="test-item-date">⬆️ ${uploadDate}</div>
+                <div class="test-item-result ${resultClass}">${result}</div>
             </div>
         `;
     }).join('');
 }
 
-async function viewTestDetail(testId, testType = 'mlc') {
+function updateStats() {
+    // Update shown tests count
+    document.getElementById('shownTests').textContent = filteredTests.length;
+    
+    // Update current test type
+    let testTypeText = 'All';
+    if (currentFilters.specificTest) {
+        testTypeText = TEST_DISPLAY_NAMES[currentFilters.specificTest];
+    } else if (currentFilters.testType) {
+        testTypeText = currentFilters.testType.charAt(0).toUpperCase() + currentFilters.testType.slice(1);
+    }
+    document.getElementById('currentTestType').textContent = testTypeText;
+    
+    // Update current date range
+    let dateRangeText = 'All dates';
+    if (currentFilters.startDate || currentFilters.endDate) {
+        const start = currentFilters.startDate || '...';
+        const end = currentFilters.endDate || '...';
+        dateRangeText = `${start} to ${end}`;
+    }
+    document.getElementById('currentDateRange').textContent = dateRangeText;
+}
+
+async function viewTestDetail(testId, testType) {
     loadingSection.style.display = 'block';
     
     try {
-        // Use the correct endpoint based on test type
-        const endpoint = testType === 'mvic' 
-            ? `${API_BASE_URL}/mvic-test-sessions/${testId}`
-            : `${API_BASE_URL}/mlc-test-sessions/${testId}`;
+        // Map test type to endpoint
+        const endpointMap = {
+            'safety_systems': 'safety-systems-sessions',
+            'niveau_helium': 'niveau-helium-sessions',
+            'mlc_leaf_jaw': 'mlc-leaf-jaw-sessions',
+            'mvic': 'mvic-sessions',
+            'mvic_fente_v2': 'mvic-fente-v2-sessions',
+            'piqt': 'piqt-sessions',
+            'position_table': 'position-table-sessions',
+            'alignement_laser': 'alignement-laser-sessions',
+            'quasar': 'quasar-sessions',
+            'indice_quality': 'indice-quality-sessions'
+        };
         
-        const response = await fetch(endpoint);
+        const endpoint = endpointMap[testType];
+        if (!endpoint) {
+            throw new Error(`Unknown test type: ${testType}`);
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/${endpoint}/${testId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch test: ${response.statusText}`);
+        }
+        
         const test = await response.json();
-        
-        // Add test type to the test object
         test.test_type = testType;
         
         selectedTest = test;
@@ -145,7 +319,7 @@ async function viewTestDetail(testId, testType = 'mlc') {
         testDetailSection.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         console.error('Error loading test detail:', error);
-        alert('Error loading test details');
+        alert(`Error loading test details: ${error.message}`);
     } finally {
         loadingSection.style.display = 'none';
     }
@@ -154,8 +328,10 @@ async function viewTestDetail(testId, testType = 'mlc') {
 function displayTestDetail(test) {
     testDetailSection.style.display = 'block';
     
+    const testDisplayName = TEST_DISPLAY_NAMES[test.test_type] || test.test_type.toUpperCase();
+    
     // Update info
-    document.getElementById('detailTestId').textContent = test.id;
+    document.getElementById('detailTestId').textContent = `${testDisplayName} #${test.id}`;
     document.getElementById('detailFilename').textContent = `Operator: ${test.operator}`;
     
     const testDate = test.test_date ? 
@@ -168,7 +344,7 @@ function displayTestDetail(test) {
     
     const summaryCard = document.querySelector('.summary-card');
     
-    // Helper function to format numbers - 2 decimal places
+    // Helper function to format numbers
     const fmt = (val) => val != null ? (typeof val === 'number' ? val.toFixed(2) : val) : 'N/A';
     
     // Display based on test type
@@ -204,7 +380,30 @@ function displayTestDetail(test) {
             </div>
             ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
         `;
-    } else {
+        // Hide visualizations and results table for MVIC tests
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
+    } else if (test.test_type === 'piqt') {
+        // PIQT test display
+        summaryCard.innerHTML = `
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats PIQT</h3>
+            <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Résultat:</span>
+                    <span class="value" style="font-size: 1em !important;"><strong>${test.overall_result || 'N/A'}</strong></span>
+                </div>
+            </div>
+            ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/piqt_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full PIQT Report →
+                </a>
+            </div>
+        `;
+        // Hide visualizations and results table for PIQT tests in review page
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
+    } else if (test.test_type === 'mlc_leaf_jaw') {
         // MLC test display
         summaryCard.innerHTML = `
             <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats MLC</h3>
@@ -236,11 +435,25 @@ function displayTestDetail(test) {
             </div>
             ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
         `;
+        // Hide visualizations and results table for MLC tests
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
+    } else {
+        // Default display for other test types
+        summaryCard.innerHTML = `
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats</h3>
+            <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Résultat:</span>
+                    <span class="value" style="font-size: 1em !important;"><strong>${test.overall_result || 'N/A'}</strong></span>
+                </div>
+            </div>
+            ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+        `;
+        // Hide visualizations and results table for unknown test types
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
     }
-    
-    // Hide visualizations and results table for both MLC and MVIC tests
-    document.querySelector('.visualization-section').style.display = 'none';
-    document.querySelector('.results-table-section').style.display = 'none';
 }
 
 function populateDetailTable(results) {
@@ -306,40 +519,32 @@ function closeTestDetail() {
     selectedTest = null;
 }
 
-function applyDateFilter() {
-    const startDate = startDateInput.value;
-    const endDate = endDateInput.value;
-    
-    if (!startDate && !endDate) {
-        alert('Please select at least one date');
-        return;
-    }
-    
-    loadTests(startDate, endDate);
-}
-
-function clearDateFilter() {
-    startDateInput.value = '';
-    endDateInput.value = '';
-    loadTests();
-}
-
 async function deleteTest() {
     if (!selectedTest) return;
     
-    const testTypeName = selectedTest.test_type === 'mvic' ? 'MVIC' : 'MLC';
+    const testDisplayName = TEST_DISPLAY_NAMES[selectedTest.test_type] || selectedTest.test_type.toUpperCase();
     
-    if (!confirm(`Are you sure you want to delete ${testTypeName} Test #${selectedTest.id}?\n\nThis action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete ${testDisplayName} Test #${selectedTest.id}?\n\nThis action cannot be undone.`)) {
         return;
     }
     
     try {
-        // Use correct endpoint based on test type
-        const endpoint = selectedTest.test_type === 'mvic'
-            ? `${API_BASE_URL}/mvic-test-sessions/${selectedTest.id}`
-            : `${API_BASE_URL}/mlc-test-sessions/${selectedTest.id}`;
+        // Map test type to endpoint
+        const endpointMap = {
+            'safety_systems': 'safety-systems-sessions',
+            'niveau_helium': 'niveau-helium-sessions',
+            'mlc_leaf_jaw': 'mlc-test-sessions',
+            'mvic': 'mvic-sessions',
+            'mvic_fente_v2': 'mvic-fente-v2-sessions',
+            'piqt': 'piqt-sessions',
+            'position_table_v2': 'position-table-sessions',
+            'alignement_laser': 'alignement-laser-sessions',
+            'quasar': 'quasar-sessions',
+            'indice_quality': 'indice-quality-sessions'
+        };
         
-        const response = await fetch(endpoint, {
+        const endpoint = endpointMap[selectedTest.test_type];
+        const response = await fetch(`${API_BASE_URL}/${endpoint}/${selectedTest.id}`, {
             method: 'DELETE'
         });
         
@@ -347,12 +552,11 @@ async function deleteTest() {
             throw new Error('Failed to delete test');
         }
         
-        alert(`✅ ${testTypeName} test deleted successfully`);
+        alert(`✅ ${testDisplayName} test deleted successfully`);
         
         // Close detail view and reload tests
         closeTestDetail();
-        loadTests();
-        loadDatabaseStats();
+        loadAllTests();
         
     } catch (error) {
         console.error('Error deleting test:', error);
@@ -361,98 +565,10 @@ async function deleteTest() {
 }
 
 async function downloadTestReport() {
-    // Prompt for date range
-    const startDate = prompt('Enter start date (YYYY-MM-DD) or leave empty for all:');
-    const endDate = prompt('Enter end date (YYYY-MM-DD) or leave empty for all:');
+    if (!selectedTest) {
+        alert('Please select a test first');
+        return;
+    }
     
-    try {
-        // Show loading indicator
-        downloadReportBtn.disabled = true;
-        downloadReportBtn.textContent = '⏳ Generating PDF...';
-        
-        let url = `${API_BASE_URL}/mlc-reports/trend`;
-        const params = new URLSearchParams();
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to generate report');
-        }
-        
-        // Download the PDF
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `mlc_report_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(downloadUrl);
-        document.body.removeChild(a);
-        
-        alert('✅ PDF report downloaded successfully');
-        
-    } catch (error) {
-        console.error('Error downloading report:', error);
-        alert(`Error generating PDF report: ${error.message}`);
-    } finally {
-        downloadReportBtn.disabled = false;
-        downloadReportBtn.textContent = '📄 Download PDF Report';
-    }
-}
-
-async function generateTrendReport() {
-    try {
-        // Show loading indicator
-        generateTrendReportBtn.disabled = true;
-        generateTrendReportBtn.textContent = '⏳ Generating Trend Report...';
-        
-        // Get date filters if set
-        const startDate = startDateInput.value || null;
-        const endDate = endDateInput.value || null;
-        
-        // For now, generate report for MLC tests (you can make this dynamic later)
-        let url = `${API_BASE_URL}/reports/trend/mlc_leaf_jaw`;
-        const params = new URLSearchParams();
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to generate trend report');
-        }
-        
-        // Download the PDF
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `trend_report_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(downloadUrl);
-        document.body.removeChild(a);
-        
-        alert('✅ Trend report downloaded successfully');
-        
-    } catch (error) {
-        console.error('Error generating trend report:', error);
-        alert(`Error generating trend report: ${error.message}`);
-    } finally {
-        generateTrendReportBtn.disabled = false;
-        generateTrendReportBtn.textContent = '📊 Generate Trend Report (All Tests)';
-    }
+    alert('Report generation for individual tests not yet implemented');
 }

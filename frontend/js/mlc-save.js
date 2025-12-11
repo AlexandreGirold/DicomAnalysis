@@ -8,6 +8,115 @@ window.CURRENT_MLC_TEST_DATA = null;
 window.CURRENT_TEST_TYPE = null; // 'mlc' or 'mvic'
 
 /**
+ * Extract filenames from analysis result
+ */
+function extractFilenames(analysisResult) {
+    const filenames = [];
+    
+    // Check file_results array
+    if (analysisResult.file_results && Array.isArray(analysisResult.file_results)) {
+        analysisResult.file_results.forEach(fr => {
+            if (fr.filename) {
+                filenames.push(fr.filename);
+            }
+        });
+    }
+    
+    // Check visualizations array
+    if (analysisResult.visualizations && Array.isArray(analysisResult.visualizations)) {
+        analysisResult.visualizations.forEach(viz => {
+            if (viz.filename) {
+                filenames.push(viz.filename);
+            }
+        });
+    }
+    
+    // Check top-level filename or filenames field
+    if (analysisResult.filename) {
+        filenames.push(analysisResult.filename);
+    }
+    if (analysisResult.filenames && Array.isArray(analysisResult.filenames)) {
+        filenames.push(...analysisResult.filenames);
+    }
+    
+    // Return unique filenames
+    return [...new Set(filenames)];
+}
+
+/**
+ * Prepare generic test data (for simple tests)
+ * Extracts test-specific fields from inputs and results
+ */
+function prepareGenericTestData(analysisResult) {
+    console.log('🔧 prepareGenericTestData - Full result:', analysisResult);
+    
+    const baseData = {
+        test_date: analysisResult.test_date || new Date().toISOString(),
+        operator: analysisResult.operator || null,
+        overall_result: analysisResult.overall_result || 'PASS',
+        notes: analysisResult.notes || '',
+        filenames: extractFilenames(analysisResult)
+    };
+    
+    // Extract ALL test-specific fields from inputs
+    // This handles: niveau_helium, safety_systems, position_table, alignement_laser, quasar, indice_quality, piqt
+    if (analysisResult.inputs) {
+        console.log('📥 Found inputs:', analysisResult.inputs);
+        
+        Object.keys(analysisResult.inputs).forEach(key => {
+            // Skip fields that are already in baseData (operator, notes, test_date)
+            if (!baseData[key] && analysisResult.inputs[key] !== undefined) {
+                // Extract the value from the input object structure
+                const inputValue = analysisResult.inputs[key];
+                if (inputValue && typeof inputValue === 'object' && 'value' in inputValue) {
+                    baseData[key] = inputValue.value;
+                    console.log(`✓ Extracted ${key} from inputs.value:`, baseData[key]);
+                } else {
+                    baseData[key] = inputValue;
+                    console.log(`✓ Extracted ${key} from inputs:`, baseData[key]);
+                }
+            }
+        });
+    }
+    
+    // Extract fields from results (for computed values)
+    // Some tests return results as an array (e.g., PIQT), others as key-value pairs (dict)
+    if (analysisResult.results) {
+        console.log('📊 Found results:', analysisResult.results);
+        
+        // Check if results is an array
+        if (Array.isArray(analysisResult.results)) {
+            // Store the entire array for tests that use array format
+            baseData.results = analysisResult.results;
+            console.log(`✓ Stored results array with ${analysisResult.results.length} items`);
+        } 
+        // Check if results is an object/dict (BaseTest format)
+        else if (typeof analysisResult.results === 'object') {
+            // Store as-is - backend will convert dict to array format
+            baseData.results = analysisResult.results;
+            console.log(`✓ Stored results object with ${Object.keys(analysisResult.results).length} keys`);
+        }
+    }
+    
+    // Also check top-level fields as fallback
+    // Some tests might return data directly at the top level
+    const topLevelFields = Object.keys(analysisResult).filter(key => 
+        !['test_name', 'description', 'test_date', 'operator', 'inputs', 'results', 
+          'overall_result', 'overall_status', 'notes', 'filenames'].includes(key)
+    );
+    
+    topLevelFields.forEach(field => {
+        if (analysisResult[field] !== undefined && !baseData[field]) {
+            baseData[field] = analysisResult[field];
+            console.log(`✓ Extracted from top level ${field}:`, baseData[field]);
+        }
+    });
+    
+    console.log('📦 Final prepared data:', baseData);
+    return baseData;
+}
+
+/**
  * Extract and prepare MLC test data from analysis results
  * @param {object} analysisResult - The raw analysis result from backend
  */
@@ -179,19 +288,60 @@ function prepareMVICTestData(analysisResult) {
 /**
  * Show save button and store test data
  */
-function enableMLCTestSave(analysisResult, testType = 'mlc') {
-    console.log('enableMLCTestSave called with type:', testType, 'result:', analysisResult);
+function enableMLCTestSave(analysisResult, testType = null) {
+    console.log('============================================');
+    console.log('🔍 SAVE BUTTON ACTIVATION');
+    console.log('============================================');
+    console.log('📥 Input testType:', testType);
+    console.log('📄 Test Name:', analysisResult.test_name);
+    console.log('📊 Full Result:', analysisResult);
     
-    // Detect test type from test_name if not provided
+    // Try to detect test type from multiple sources
     if (!testType || testType === 'mlc') {
-        if (analysisResult.test_name && analysisResult.test_name.includes('MVIC')) {
-            testType = 'mvic';
-        } else if (analysisResult.test_name && analysisResult.test_name.includes('MLC')) {
-            testType = 'mlc';
+        console.log('⚠️  Need to detect test type (got null or "mlc")');
+        
+        // Try from test_name first
+        const detectedType = mapTestNameToEndpoint(analysisResult.test_name);
+        if (detectedType) {
+            console.log('✅ Detected from test_name:', detectedType);
+            testType = detectedType;
+        }
+        // Legacy fallback: check if it contains MVIC or MLC keywords
+        else if (analysisResult.test_name) {
+            const name = analysisResult.test_name.toLowerCase();
+            console.log('🔎 Checking test name pattern:', name);
+            if (name.includes('mvic')) {
+                testType = 'mvic';
+                console.log('✅ Detected MVIC from name');
+            } else if (name.includes('mlc')) {
+                testType = 'mlc_leaf_jaw';
+                console.log('✅ Detected MLC from name');
+            }
+        }
+    } else {
+        console.log('✅ Test type provided:', testType);
+    }
+    
+    // If still not detected, try to infer from result structure
+    if (!testType || testType === 'mlc') {
+        console.log('⚠️  Still not detected, checking result structure...');
+        if (analysisResult.visualizations && Array.isArray(analysisResult.visualizations)) {
+            testType = 'mvic';  // MVIC tests have visualizations
+            console.log('✅ Detected MVIC from visualizations array');
+        } else if (analysisResult.file_results && Array.isArray(analysisResult.file_results)) {
+            // Check analysis types in file_results
+            const analysisTypes = analysisResult.file_results.map(fr => fr.analysis_type);
+            console.log('🔍 Analysis types found:', analysisTypes);
+            if (analysisTypes.some(t => t === 'center_detection' || t === 'jaw_position')) {
+                testType = 'mlc_leaf_jaw';
+                console.log('✅ Detected MLC from analysis types');
+            }
         }
     }
     
-    console.log('Final test type:', testType);
+    console.log('🎯 FINAL TEST TYPE:', testType);
+    console.log('🔗 Will use endpoint:', TEST_SAVE_ENDPOINTS[testType]);
+    console.log('============================================');
     window.CURRENT_TEST_TYPE = testType;
     
     // Always show the save button for any test result
@@ -208,22 +358,26 @@ function enableMLCTestSave(analysisResult, testType = 'mlc') {
     
     // Prepare data based on test type
     let testData = null;
+    
+    // Special handling for complex tests
     if (testType === 'mvic') {
         testData = prepareMVICTestData(analysisResult);
-    } else {
+    } else if (testType === 'mlc_leaf_jaw') {
         testData = prepareMLCTestData(analysisResult);
+    } else if (testType === 'mvic_fente' || testType === 'mvic_fente_v2') {
+        // For MVIC Fente, we need to extract slit data
+        testData = prepareGenericTestData(analysisResult);
+        // Use detailed_results which has the slits array structure
+        testData.results = analysisResult.detailed_results || [];
+    } else {
+        // For all other tests, use generic preparation
+        testData = prepareGenericTestData(analysisResult);
     }
     
     if (!testData) {
-        console.warn('Could not prepare test data - button shown but data not prepared');
-        // Still show button with minimal data
-        window.CURRENT_MLC_TEST_DATA = {
-            test_date: new Date().toISOString(),
-            operator: null,
-            overall_result: analysisResult.overall_result || 'UNKNOWN',
-            notes: 'Partial data - manual entry may be needed'
-        };
-        return;
+        console.warn('Could not prepare test data - using fallback');
+        // Fallback with minimal data
+        testData = prepareGenericTestData(analysisResult);
     }
     
     console.log('Test data prepared:', testData);
@@ -233,7 +387,72 @@ function enableMLCTestSave(analysisResult, testType = 'mlc') {
 }
 
 /**
- * Save test to database (routes to MLC or MVIC endpoint based on test type)
+ * Map test IDs/types to their save endpoints
+ * MUST match the test IDs from backend services/__init__.py files
+ */
+const TEST_SAVE_ENDPOINTS = {
+    // Weekly tests
+    'mvic': '/mvic-test-sessions',
+    'mvic_fente': '/mvic-fente-v2-sessions',
+    'mvic_fente_v2': '/mvic-fente-v2-sessions',
+    'mlc_leaf_jaw': '/mlc-leaf-jaw-sessions',
+    'niveau_helium': '/niveau-helium-sessions',
+    'piqt': '/piqt-sessions',
+    
+    // Daily tests
+    'safety_systems': '/safety-systems-sessions',
+    
+    // Monthly tests
+    'position_table_v2': '/position-table-sessions',
+    'alignement_laser': '/alignement-laser-sessions',
+    'quasar': '/quasar-sessions',
+    'indice_quality': '/indice-quality-sessions'
+};
+
+/**
+ * Map test names (from result.test_name) to endpoint keys
+ */
+function mapTestNameToEndpoint(testName) {
+    if (!testName) return null;
+    
+    const name = testName.toLowerCase();
+    
+    if (name.includes('mvic') && name.includes('fente')) {
+        return 'mvic_fente_v2';
+    }
+    if (name.includes('mvic')) {
+        return 'mvic';
+    }
+    if (name.includes('mlc') && name.includes('leaf')) {
+        return 'mlc_leaf_jaw';
+    }
+    if (name.includes('helium') || name.includes('hélium')) {
+        return 'niveau_helium';
+    }
+    if (name.includes('piqt')) {
+        return 'piqt';
+    }
+    if (name.includes('safety')) {
+        return 'safety_systems';
+    }
+    if (name.includes('position') && name.includes('table')) {
+        return 'position_table_v2';
+    }
+    if (name.includes('alignement') && name.includes('laser')) {
+        return 'alignement_laser';
+    }
+    if (name.includes('quasar')) {
+        return 'quasar';
+    }
+    if (name.includes('indice') || name.includes('quality')) {
+        return 'indice_quality';
+    }
+    
+    return null;
+}
+
+/**
+ * Save test to database (routes to correct endpoint based on test type)
  */
 async function saveMLCTestToDatabase() {
     if (!window.CURRENT_MLC_TEST_DATA) {
@@ -242,9 +461,13 @@ async function saveMLCTestToDatabase() {
     }
     
     const testData = window.CURRENT_MLC_TEST_DATA;
-    const testType = window.CURRENT_TEST_TYPE || 'mlc';
+    const testType = window.CURRENT_TEST_TYPE || 'mvic';
     
-    console.log('Saving test with type:', testType, 'data:', testData);
+    console.log('============================================');
+    console.log('💾 SAVING TEST TO DATABASE');
+    console.log('============================================');
+    console.log('🔑 Test Type:', testType);
+    console.log('📦 Test Data:', testData);
     
     // Prompt for operator name if not set
     if (!testData.operator) {
@@ -268,12 +491,17 @@ async function saveMLCTestToDatabase() {
     saveBtn.textContent = '⏳ Saving...';
     
     try {
-        // Choose endpoint based on test type
-        const endpoint = testType === 'mvic' 
-            ? `${window.APP_CONFIG.API_BASE_URL}/mvic-test-sessions`
-            : `${window.APP_CONFIG.API_BASE_URL}/mlc-test-sessions`;
+        // Get the correct endpoint for this test type
+        const endpointPath = TEST_SAVE_ENDPOINTS[testType];
+        if (!endpointPath) {
+            console.error('❌ UNKNOWN TEST TYPE!');
+            console.error('Available types:', Object.keys(TEST_SAVE_ENDPOINTS));
+            throw new Error(`Unknown test type: ${testType}. Cannot determine save endpoint.`);
+        }
         
-        console.log('Saving to endpoint:', endpoint);
+        const endpoint = `${window.APP_CONFIG.API_BASE_URL}${endpointPath}`;
+        console.log('🌐 POST to:', endpoint);
+        console.log('📤 Sending data:', JSON.stringify(testData, null, 2));
         
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -283,15 +511,35 @@ async function saveMLCTestToDatabase() {
             body: JSON.stringify(testData)
         });
         
+        console.log('📡 Response status:', response.status);
+        
         if (!response.ok) {
             const error = await response.json();
+            console.error('❌ Server error:', error);
             throw new Error(error.detail || 'Failed to save test');
         }
         
         const result = await response.json();
+        console.log('✅ SUCCESS! Result:', result);
+        console.log('============================================');
         
-        const testTypeName = testType === 'mvic' ? 'MVIC' : 'MLC';
-        alert(`✅ ${testTypeName} test saved successfully!\n\nTest ID: ${result.test_id}\n\nYou can view this test in the Review page.`);
+        // Get test type name for display
+        const testTypeNames = {
+            'mvic': 'MVIC',
+            'mvic_fente': 'MVIC Fente',
+            'mvic_fente_v2': 'MVIC Fente V2',
+            'mlc_leaf_jaw': 'MLC Leaf Jaw',
+            'niveau_helium': 'Niveau Helium',
+            'piqt': 'PIQT',
+            'safety_systems': 'Safety Systems',
+            'position_table_v2': 'Position Table V2',
+            'alignement_laser': 'Alignement Laser',
+            'quasar': 'Quasar',
+            'indice_quality': 'Indice Quality'
+        };
+        const testDisplayName = testTypeNames[testType] || testType.toUpperCase();
+        
+        alert(`✅ ${testDisplayName} test saved successfully!\n\nTest ID: ${result.test_id}\n\nYou can view this test in the Review page.`);
         
         // Update button to show saved state
         saveBtn.textContent = '✅ Saved';

@@ -5,6 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLC Blade Analysis - Review</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .frequency-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .frequency-badge.daily {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        .frequency-badge.weekly {
+            background-color: #f3e5f5;
+            color: #6a1b9a;
+        }
+        .frequency-badge.monthly {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        .filter-grid {
+            display: grid;
+            gap: 15px;
+        }
+        .filter-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .tests-list-compact {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 100%;
+        }
+        .test-item-compact {
+            display: grid;
+            grid-template-columns: 80px 200px 150px 180px 180px 120px 1fr;
+            gap: 12px;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .test-item-compact:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-color: #2196f3;
+            transform: translateY(-1px);
+        }
+        .test-item-id {
+            font-weight: bold;
+            color: #1976d2;
+            font-size: 0.95em;
+        }
+        .test-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .test-item-operator {
+            color: #666;
+        }
+        .test-item-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .test-item-result {
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .result-pass { background: #c8e6c9; color: #2e7d32; }
+        .result-fail { background: #ffcdd2; color: #c62828; }
+        .result-warning { background: #fff9c4; color: #f57f17; }
+        .result-complete { background: #e1bee7; color: #6a1b9a; }
+        .result-na { background: #e0e0e0; color: #616161; }
+        @media (max-width: 1200px) {
+            .test-item-compact {
+                grid-template-columns: 60px 150px 120px 140px 100px;
+                gap: 8px;
+                font-size: 0.85em;
+            }
+            .test-item-date:last-of-type,
+            .test-item-operator {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -20,15 +112,48 @@
             <section class="filter-section">
                 <h2>Review Historical Tests</h2>
                 
-                <div class="trend-actions">
-                    <button id="generateTrendReportBtn" class="btn btn-primary">
-                        📊 Generate Trend Report (All Tests)
-                    </button>
-                </div>
-                
                 <div class="filter-card">
-                    <h3>Filter by Date Range</h3>
-                    <div class="filter-grid">
+                    <h3>🔍 Filter Tests</h3>
+                    <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <!-- Test Type Selection -->
+                        <div class="filter-item">
+                            <label for="testTypeFilter">Test Type:</label>
+                            <select id="testTypeFilter" class="form-select">
+                                <option value="">All Tests</option>
+                                <option value="daily">Daily Tests</option>
+                                <option value="weekly">Weekly Tests</option>
+                                <option value="monthly">Monthly Tests</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Specific Test Selection -->
+                        <div class="filter-item">
+                            <label for="specificTestFilter">Specific Test:</label>
+                            <select id="specificTestFilter" class="form-select">
+                                <option value="">All</option>
+                                <!-- Daily -->
+                                <optgroup label="Daily Tests">
+                                    <option value="safety_systems">Safety Systems</option>
+                                </optgroup>
+                                <!-- Weekly -->
+                                <optgroup label="Weekly Tests">
+                                    <option value="niveau_helium">Niveau Helium</option>
+                                    <option value="mlc_leaf_jaw">MLC Leaf & Jaw</option>
+                                    <option value="mvic">MVIC</option>
+                                    <option value="mvic_fente_v2">MVIC Fente V2</option>
+                                    <option value="piqt">PIQT</option>
+                                </optgroup>
+                                <!-- Monthly -->
+                                <optgroup label="Monthly Tests">
+                                    <option value="position_table_v2">Position Table V2</option>
+                                    <option value="alignement_laser">Alignement Laser</option>
+                                    <option value="quasar">Quasar</option>
+                                    <option value="indice_quality">Indice Quality</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <!-- Date Range -->
                         <div class="filter-item">
                             <label for="startDate">Start Date:</label>
                             <input type="date" id="startDate" class="form-input">
@@ -37,11 +162,13 @@
                             <label for="endDate">End Date:</label>
                             <input type="date" id="endDate" class="form-input">
                         </div>
-                        <div class="filter-item">
-                            <button id="filterBtn" class="btn btn-primary">
-                                🔍 Filter
+                        
+                        <!-- Action Buttons -->
+                        <div class="filter-item" style="display: flex; gap: 10px; align-items: flex-end;">
+                            <button id="applyFilterBtn" class="btn btn-primary" style="flex: 1;">
+                                🔍 Apply Filter
                             </button>
-                            <button id="clearFilterBtn" class="btn btn-secondary">
+                            <button id="clearFilterBtn" class="btn btn-secondary" style="flex: 1;">
                                 🗑️ Clear
                             </button>
                         </div>
@@ -49,19 +176,19 @@
                 </div>
 
                 <div class="stats-card">
-                    <h3>Database Statistics</h3>
-                    <div class="stats-grid">
+                    <h3>📊 Current View Statistics</h3>
+                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                         <div class="stat-item">
-                            <span class="label">Total Tests:</span>
-                            <span id="totalTests" class="value">-</span>
+                            <span class="label">Tests Shown:</span>
+                            <span id="shownTests" class="value">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="label">Total Measurements:</span>
-                            <span id="totalMeasurements" class="value">-</span>
+                            <span class="label">Test Type:</span>
+                            <span id="currentTestType" class="value">All</span>
                         </div>
                         <div class="stat-item">
                             <span class="label">Date Range:</span>
-                            <span id="dateRange" class="value">-</span>
+                            <span id="currentDateRange" class="value">All dates</span>
                         </div>
                     </div>
                 </div>
@@ -74,7 +201,7 @@
 
             <section class="tests-section">
                 <h3>Test History</h3>
-                <div id="testsContainer" class="tests-container">
+                <div id="testsContainer" class="tests-list-compact">
                     <p class="placeholder-text">No tests found. Run some analyses first!</p>
                 </div>
             </section>

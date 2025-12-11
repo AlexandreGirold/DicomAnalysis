@@ -30,11 +30,15 @@ function displayTestResults(result) {
         document.getElementById('testVisualizations').style.display = 'none';
     }
     
-    // Show the save button
+    // Reset and show the save button for new test
     const saveBtn = document.getElementById('saveTestBtn');
     if (saveBtn) {
+        // Reset button state
         saveBtn.style.display = 'inline-block';
-        console.log('Save button shown in displayTestResults');
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save to Database';
+        saveBtn.className = 'btn btn-success';
+        console.log('Save button reset and shown for new test');
     }
     
     // Store the result for saving later

@@ -16,7 +16,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import os
 import base64
-from database import SessionLocal, MVCenterConfig
+import sys
+# Add backend root to path for mv_center_utils import
+backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, backend_root)
+
+from mv_center_utils import get_mv_center
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +63,17 @@ class MVICFenteTest(BaseTest):
         """
         self.set_test_info(operator, test_date)
         
+        # Store filenames for database
+        self.dicom_files = files
+        
         if notes:
             self.notes = notes
         
         if not files:
             raise ValueError("At least one DICOM file is required")
         
+        # Initialize file_results array to link each file to its analysis
+        self.file_results = []
         all_results = []
         visualization_files = []
         
@@ -127,6 +137,18 @@ class MVICFenteTest(BaseTest):
                 }
                 
                 all_results.append(image_result)
+                
+                # Add to file_results for image-to-result mapping
+                self.file_results.append({
+                    'filename': Path(file_path).name,
+                    'filepath': file_path,
+                    'image_number': idx,
+                    'analysis_type': 'Black Bands Detection',
+                    'num_bands': len(bands),
+                    'bands': bands,
+                    'pixel_spacing': pixel_spacing,
+                    'status': 'PASS' if len(bands) > 0 else 'WARNING'
+                })
                 
                 # Add individual band results
                 for band_idx, band in enumerate(bands, 1):
@@ -203,28 +225,7 @@ class MVICFenteTest(BaseTest):
         
         return result
     
-    def _get_mv_center_from_db(self) -> Tuple[float, float]:
-        """Retrieve MV center coordinates from database"""
-        try:
-            db = SessionLocal()
-            config = db.query(MVCenterConfig).first()
-            if config:
-                logger.info(f"[MVIC-FENTE] MV center from database: u={config.u}, v={config.v}")
-                return config.u, config.v
-            else:
-                # Create default config if not exists
-                default_config = MVCenterConfig(u=511.03, v=652.75)
-                db.add(default_config)
-                db.commit()
-                logger.info(f"[MVIC-FENTE] Created default MV center: u=511.03, v=652.75")
-                return 511.03, 652.75
-        except Exception as e:
-            logger.error(f"[MVIC-FENTE] Error retrieving MV center from database: {e}")
-            # Fallback to default
-            return 511.03, 652.75
-        finally:
-            if 'db' in locals():
-                db.close()
+
     
     def _get_pixel_spacing(self, dcm) -> Optional[float]:
         """
@@ -492,6 +493,20 @@ class MVICFenteTest(BaseTest):
             import traceback
             traceback.print_exc()
             return None
+    
+    def to_dict(self):
+        """Override to_dict to include filenames and file_results"""
+        result = super().to_dict()
+        
+        # Add filenames at top level for easy database storage
+        if hasattr(self, 'dicom_files') and self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
+        
+        # Add file_results for image-to-result mapping
+        if hasattr(self, 'file_results') and self.file_results:
+            result['file_results'] = self.file_results
+        
+        return result
     
     def get_form_data(self):
         """

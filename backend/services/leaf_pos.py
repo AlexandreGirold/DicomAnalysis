@@ -22,7 +22,13 @@ backend_dir = Path(__file__).parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from database import SessionLocal, MVCenterConfig
+import sys
+import os
+# Add backend root to path for mv_center_utils import
+backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_root)
+
+from mv_center_utils import get_mv_center
 
 # Conditional import of tkinter (only needed for standalone GUI mode)
 try:
@@ -37,7 +43,7 @@ class MLCBladeAnalyzer:
     def __init__(self, testing_folder=None, gui_mode=False):
         # Default values (will be updated from DICOM metadata)
         self.pixel_size = 0.216  # mm - Pixel size at isocenter (default, will be calculated from DICOM)
-        self.center_u, self.center_v = self._get_mv_center_from_db()
+        self.center_u, self.center_v = get_mv_center()
         self.blade_width_pixels = 33.25  # 1 blade = 7.18mm = 33.2 pixels (will be recalculated)
         self.blade_width_iso = 7.18  # mm - blade width at isocenter (FIXED specification)
         self.testing_folder = testing_folder if testing_folder else r"C:\Users\agirold\Desktop\testing"  # Optional: preset folder path
@@ -70,28 +76,7 @@ class MLCBladeAnalyzer:
         )
         root.destroy()
     
-    def _get_mv_center_from_db(self):
-        """Retrieve MV center coordinates from database"""
-        try:
-            db = SessionLocal()
-            config = db.query(MVCenterConfig).first()
-            if config:
-                print(f"[MLC-BLADE] MV center from database: u={config.u}, v={config.v}")
-                return config.u, config.v
-            else:
-                # Create default config if not exists
-                default_config = MVCenterConfig(u=511.03, v=652.75)
-                db.add(default_config)
-                db.commit()
-                print(f"[MLC-BLADE] Created default MV center: u=511.03, v=652.75")
-                return 511.03, 652.75
-        except Exception as e:
-            print(f"[MLC-BLADE] Error retrieving MV center from database: {e}")
-            # Fallback to default
-            return 511.03, 652.75
-        finally:
-            if 'db' in locals():
-                db.close()
+
     
     def select_dicom_directory(self):
         """Open dialog to select DICOM directory"""

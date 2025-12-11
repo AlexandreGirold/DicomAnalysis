@@ -326,6 +326,9 @@ class MVICTest(BaseTest):
         """
         self.set_test_info(operator, test_date)
         
+        # Initialize file_results array to link each file to its analysis
+        self.file_results = []
+        
         # Validation du nombre de fichiers
         if len(files) != 5:
             raise ValueError(f"Le test MVIC nécessite exactement 5 images DICOM. Reçu: {len(files)}")
@@ -355,6 +358,9 @@ class MVICTest(BaseTest):
         
         # Sort by datetime
         files_with_datetime.sort(key=lambda x: x[1])
+        
+        # Store filenames for database
+        self.dicom_files = [f[0] for f in files_with_datetime]
         
         # Log chronological order
         logger.info("Ordre chronologique des fichiers:")
@@ -427,11 +433,27 @@ class MVICTest(BaseTest):
                     avg_angle = np.mean(angles_list) if angles_list else None
                     std_angle = np.std(angles_list) if angles_list else None
                     
-                    image_db_data.append({
+                    image_data = {
                         'width_mm': dimensions['width_mm'],
                         'height_mm': dimensions['height_mm'],
                         'avg_angle': avg_angle,
                         'angle_std_dev': std_angle
+                    }
+                    image_db_data.append(image_data)
+                    
+                    # Add to file_results for image-to-result mapping
+                    self.file_results.append({
+                        'filename': filename,
+                        'filepath': filepath,
+                        'image_number': i,
+                        'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
+                        'analysis_type': 'Field Size and Shape Validation',
+                        'dimensions': dimensions,
+                        'size_validation': size_validation,
+                        'angle_validation': angle_validation,
+                        'measurements': image_data,
+                        'status': 'PASS' if (size_validation and size_validation['is_valid'] and 
+                                           angle_validation and angle_validation['is_valid']) else 'FAIL'
                     })
                 else:
                     # Store None values if data is missing
@@ -440,6 +462,17 @@ class MVICTest(BaseTest):
                         'height_mm': None,
                         'avg_angle': None,
                         'angle_std_dev': None
+                    })
+                    
+                    # Add to file_results even on failure
+                    self.file_results.append({
+                        'filename': filename,
+                        'filepath': filepath,
+                        'image_number': i,
+                        'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
+                        'analysis_type': 'Field Size and Shape Validation',
+                        'status': 'ERROR',
+                        'error': 'Missing dimensions or angle data'
                     })
                 
             except Exception as e:
@@ -490,8 +523,16 @@ class MVICTest(BaseTest):
         return self.to_dict()
     
     def to_dict(self):
-        """Override to_dict to include visualizations and test_id"""
+        """Override to_dict to include visualizations, test_id, filenames, and file_results"""
         result = super().to_dict()
+        
+        # Add filenames at top level for easy database storage
+        if hasattr(self, 'dicom_files') and self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
+        
+        # Add file_results for image-to-result mapping
+        if hasattr(self, 'file_results') and self.file_results:
+            result['file_results'] = self.file_results
         
         # Add visualizations to the output
         if self.visualizations:
@@ -502,6 +543,50 @@ class MVICTest(BaseTest):
             result['test_id'] = self.test_id
         
         return result
+    
+    def save_to_database(self, filenames: Optional[List[str]] = None):
+        """
+        Save MVIC test results to database
+        
+        Args:
+            filenames: Optional list of source DICOM filenames
+        
+        Returns:
+            int: Test ID from database
+        """
+        try:
+            from database_helpers import save_mvic_to_database
+            
+            # Prepare results list - one entry per image
+            results_list = []
+            for i in range(1, 6):  # 5 images
+                image_key = f"Image {i}"
+                if image_key in self.results:
+                    img_result = self.results[image_key]
+                    results_list.append({
+                        'top_left_angle': img_result.get('top_left_angle', 0),
+                        'top_right_angle': img_result.get('top_right_angle', 0),
+                        'bottom_left_angle': img_result.get('bottom_left_angle', 0),
+                        'bottom_right_angle': img_result.get('bottom_right_angle', 0),
+                        'height': img_result.get('height', 0),
+                        'width': img_result.get('width', 0)
+                    })
+            
+            test_id = save_mvic_to_database(
+                operator=self.operator,
+                test_date=self.test_date,
+                overall_result=self.overall_result,
+                results=results_list,
+                notes=self.notes,
+                filenames=filenames or self.dicom_files
+            )
+            
+            self.test_id = test_id
+            return test_id
+            
+        except Exception as e:
+            logger.error(f"Error saving MVIC test to database: {e}")
+            raise
     
     def get_form_data(self):
         """

@@ -48,12 +48,12 @@ echo   Server Starting...
 echo   URL: http://localhost:8000
 echo ============================================
 echo.
-echo The browser will open in 3 seconds...
+echo The browser will open in 5 seconds...
 echo Press Ctrl+C to stop the server
 echo.
 
-:: Wait 4 seconds then open browser
-timeout /t 4 /nobreak >nul
+:: Wait 5 seconds then open browser
+timeout /t 5 /nobreak >nul
 start http://localhost:8000
 
 :: Start the server

@@ -1286,6 +1286,10 @@ class MLCLeafJawTest(BaseTest):
         
         result = super().to_dict()
         
+        # Add filenames at top level for easy database storage
+        if self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
+        
         # Add visualizations to the output
         if self.visualizations:
             result['visualizations'] = self.visualizations

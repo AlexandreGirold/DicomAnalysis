@@ -1,0 +1,292 @@
+"""
+Database Helper Functions
+Common utilities for saving test results to database
+"""
+
+from database import (
+    SessionLocal,
+    MVICTest, MVICResult,
+    MVICFenteV2Test, MVICFenteV2Result,
+    MLCLeafJawTest,
+    NiveauHeliumTest, NiveauHeliumResult,
+    PIQTTest, PIQTResult,
+    SafetySystemsTest,
+    PositionTableV2Test,
+    AlignementLaserTest,
+    QuasarTest,
+    IndiceQualityTest
+)
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+
+def save_mvic_to_database(
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    results: List[Dict[str, Any]],
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None
+) -> int:
+    """
+    Save MVIC test results to database
+    
+    Args:
+        operator: Name of operator
+        test_date: Test date
+        overall_result: PASS/FAIL/WARNING
+        results: List of results for each of 5 images
+        notes: Optional notes
+        filenames: List of filenames
+    
+    Returns:
+        test_id: ID of saved test
+    """
+    db = SessionLocal()
+    try:
+        # Create main test record
+        test = MVICTest(
+            test_date=test_date,
+            operator=operator,
+            overall_result=overall_result,
+            notes=notes,
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+        )
+        db.add(test)
+        db.flush()  # Get the test ID
+        
+        # Save results for each image
+        for i, result in enumerate(results, 1):
+            mvic_result = MVICResult(
+                test_id=test.id,
+                image_number=i,
+                filename=os.path.basename(filenames[i-1]) if filenames and i <= len(filenames) else None,
+                top_left_angle=result.get('top_left_angle', 0),
+                top_right_angle=result.get('top_right_angle', 0),
+                bottom_left_angle=result.get('bottom_left_angle', 0),
+                bottom_right_angle=result.get('bottom_right_angle', 0),
+                height=result.get('height', 0),
+                width=result.get('width', 0)
+            )
+            db.add(mvic_result)
+        
+        db.commit()
+        logger.info(f"✓ Saved MVIC test to database (ID: {test.id})")
+        return test.id
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving MVIC test to database: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def save_mvic_fente_v2_to_database(
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    results: List[Dict[str, Any]],
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None
+) -> int:
+    """
+    Save MVIC Fente V2 test results to database
+    
+    Args:
+        operator: Name of operator
+        test_date: Test date
+        overall_result: PASS/FAIL/WARNING (usually PASS for info-only test)
+        results: List of image results, each containing slits
+        notes: Optional notes
+        filenames: List of filenames
+    
+    Returns:
+        test_id: ID of saved test
+    """
+    db = SessionLocal()
+    try:
+        # Create main test record
+        test = MVICFenteV2Test(
+            test_date=test_date,
+            operator=operator,
+            overall_result=overall_result,
+            notes=notes,
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+        )
+        db.add(test)
+        db.flush()
+        
+        # Save results for each slit in each image
+        for image_idx, image_result in enumerate(results, 1):
+            filename = os.path.basename(filenames[image_idx-1]) if filenames and image_idx <= len(filenames) else None
+            
+            # Handle both dict and string (skip strings, they're not valid)
+            if not isinstance(image_result, dict):
+                logger.warning(f"Skipping non-dict image_result at index {image_idx}: {type(image_result)}")
+                continue
+            
+            # Each image can have multiple slits
+            slits = image_result.get('slits', [])
+            for slit_idx, slit in enumerate(slits, 1):
+                fente_result = MVICFenteV2Result(
+                    test_id=test.id,
+                    image_number=image_idx,
+                    filename=filename,
+                    slit_number=slit_idx,
+                    width_mm=slit.get('width_mm', 0),
+                    height_pixels=slit.get('height_pixels', 0),
+                    center_u=slit.get('center_u'),
+                    center_v=slit.get('center_v')
+                )
+                db.add(fente_result)
+        
+        db.commit()
+        logger.info(f"✓ Saved MVIC Fente V2 test to database (ID: {test.id})")
+        return test.id
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving MVIC Fente V2 test to database: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def save_mlc_leaf_jaw_to_database(
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None
+) -> int:
+    """
+    Save MLC Leaf and Jaw test to database
+    
+    Args:
+        operator: Name of operator
+        test_date: Test date
+        overall_result: PASS/FAIL/WARNING
+        notes: Optional notes
+        filenames: List of filenames
+    
+    Returns:
+        test_id: ID of saved test
+    """
+    db = SessionLocal()
+    try:
+        test = MLCLeafJawTest(
+            test_date=test_date,
+            operator=operator,
+            overall_result=overall_result,
+            notes=notes,
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+        )
+        db.add(test)
+        db.commit()
+        logger.info(f"✓ Saved MLC Leaf Jaw test to database (ID: {test.id})")
+        return test.id
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving MLC Leaf Jaw test: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def save_niveau_helium_to_database(
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    helium_level: float,
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None
+) -> int:
+    """Save Niveau Helium test to database"""
+    db = SessionLocal()
+    try:
+        test = NiveauHeliumTest(
+            test_date=test_date,
+            operator=operator,
+            helium_level=helium_level,  # Store directly in test table
+            overall_result=overall_result,
+            notes=notes,
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+        )
+        db.add(test)
+        db.commit()
+        logger.info(f"✓ Saved Niveau Helium test to database (ID: {test.id})")
+        return test.id
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving Niveau Helium test: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def save_generic_test_to_database(
+    test_class,
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None,
+    **extra_fields
+) -> int:
+    """
+    Save generic test to database with optional test-specific fields
+    
+    Args:
+        test_class: Database model class (e.g., PIQTTest, QuasarTest)
+        operator: Name of operator
+        test_date: Test date
+        overall_result: PASS/FAIL/WARNING
+        notes: Optional notes
+        filenames: List of filenames
+        **extra_fields: Test-specific fields (e.g., helium_level, position_175, etc.)
+    
+    Returns:
+        test_id: ID of saved test
+    """
+    db = SessionLocal()
+    try:
+        # Get valid column names from the model class
+        from sqlalchemy import inspect
+        mapper = inspect(test_class)
+        valid_columns = {col.key for col in mapper.columns}
+        logger.debug(f"Valid columns for {test_class.__name__}: {valid_columns}")
+        
+        # Build test data dictionary with standard fields
+        test_data = {
+            'test_date': test_date,
+            'operator': operator,
+            'overall_result': overall_result,
+            'notes': notes,
+            'filenames': ",".join([os.path.basename(f) for f in filenames]) if filenames else None
+        }
+        
+        # Add test-specific fields, but ONLY if they're valid columns
+        for key, value in extra_fields.items():
+            if key in valid_columns:
+                if value is not None:  # Only add non-None values
+                    test_data[key] = value
+                    logger.debug(f"  ✓ Adding field: {key} = {value}")
+            else:
+                logger.debug(f"  ✗ Skipping unknown field: {key} = {value}")
+        
+        test = test_class(**test_data)
+        db.add(test)
+        db.commit()
+        logger.info(f"✓ Saved {test_class.__name__} to database (ID: {test.id})")
+        return test.id
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving {test_class.__name__}: {e}")
+        raise
+    finally:
+        db.close()
