@@ -1,6 +1,6 @@
 """
-MVIC_fente package
+MVIC Fente package
 """
-from .mvic_fente_v2 import MVICFenteV2Test, test_mvic_fente_v2
+from .mvic_fente_v2 import MVICFenteTest, test_mvic_fente_v2
 
-__all__ = ['MVICFenteV2Test', 'test_mvic_fente_v2']
+__all__ = ['MVICFenteTest', 'test_mvic_fente_v2']

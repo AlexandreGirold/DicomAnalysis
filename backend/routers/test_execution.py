@@ -646,7 +646,7 @@ async def execute_mvic(request: Request):
             except OSError:
                 pass
         
-        logger.info(f"[TEST-EXECUTION] MVIC test result: {result['overall_result']}")
+        logger.info(f"[TEST-EXECUTION] MVIC-Champ test result: {result['overall_result']}")
         return JSONResponse(result)
         
     except Exception as e:
@@ -657,7 +657,7 @@ async def execute_mvic(request: Request):
             except OSError:
                 pass
         
-        logger.error(f"[TEST-EXECUTION] Error executing MVIC test: {e}")
+        logger.error(f"[TEST-EXECUTION] Error executing MVIC-Champ test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -704,7 +704,7 @@ async def execute_mvic_fente_v2(request: Request):
         if not dicom_files:
             raise HTTPException(status_code=400, detail="At least one DICOM file is required")
         
-        logger.info(f"[TEST-EXECUTION] Received {len(dicom_files)} DICOM files for MVIC Fente V2")
+        logger.info(f"[TEST-EXECUTION] Received {len(dicom_files)} DICOM files for MVIC Fente")
         
         # Save all uploaded files
         upload_dir = "uploads"
@@ -733,7 +733,7 @@ async def execute_mvic_fente_v2(request: Request):
             except OSError:
                 pass
         
-        logger.info(f"[TEST-EXECUTION] MVIC Fente V2 test result: {result['overall_result']}")
+        logger.info(f"[TEST-EXECUTION] MVIC Fente test result: {result['overall_result']}")
         return JSONResponse(result)
         
     except Exception as e:
@@ -744,7 +744,7 @@ async def execute_mvic_fente_v2(request: Request):
             except OSError:
                 pass
         
-        logger.error(f"[TEST-EXECUTION] Error executing MVIC Fente V2 test: {e}")
+        logger.error(f"[TEST-EXECUTION] Error executing MVIC Fente test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

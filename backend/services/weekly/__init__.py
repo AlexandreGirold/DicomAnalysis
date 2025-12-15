@@ -5,8 +5,8 @@ all the weekly tests, this is the same for monthly and daily and if added later 
 """
 from .niveau_helium import NiveauHeliumTest, test_helium_level
 from .PIQT import PIQTTest, test_piqt
-from .MVIC import MVICTest, test_mvic
-from .MVIC_fente import MVICFenteV2Test, test_mvic_fente_v2
+from .MVIC import MVICChampTest, test_mvic
+from .MVIC_fente import MVICFenteTest, test_mvic_fente_v2
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,9 +30,9 @@ WEEKLY_TESTS = {
         'category': 'weekly'
     },
     'mvic': {
-        'class': MVICTest,
+        'class': MVICChampTest,
         'function': test_mvic,
-        'description': 'MVIC - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
+        'description': 'MVIC-Champ - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
         'category': 'weekly'
     },
     'piqt': {
@@ -42,9 +42,9 @@ WEEKLY_TESTS = {
         'category': 'weekly'
     },
     'mvic_fente_v2': {
-        'class': MVICFenteV2Test,
+        'class': MVICFenteTest,
         'function': test_mvic_fente_v2,
-        'description': 'MVIC Fente V2 - Détection par contours (méthode ImageJ) - Largeur et espacement',
+        'description': 'MVIC Fente - Détection par contours (méthode ImageJ) - Largeur et espacement',
         'category': 'weekly'
     }
 }

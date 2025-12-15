@@ -34,6 +34,7 @@ async def save_mlc_leaf_jaw_session(data: dict):
         if 'operator' not in data or not data['operator']:
             raise ValueError("operator is required")
         
+        # First save the test to get an ID
         test_id = database_helpers.save_mlc_leaf_jaw_to_database(
             operator=data['operator'],
             test_date=test_date,
@@ -41,6 +42,31 @@ async def save_mlc_leaf_jaw_session(data: dict):
             notes=data.get('notes'),
             filenames=data.get('filenames', [])
         )
+        
+        # Save visualizations if present
+        visualizations = data.get('visualizations', [])
+        if visualizations:
+            try:
+                import sys
+                import os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'services'))
+                from visualization_storage import save_multiple_visualizations
+                import json
+                
+                saved_viz = save_multiple_visualizations(
+                    visualizations=visualizations,
+                    test_type='mlc',
+                    test_id=test_id
+                )
+                
+                # Update test with visualization paths
+                if saved_viz:
+                    viz_paths = [v.get('file_path') for v in saved_viz if v.get('file_path')]
+                    database_helpers.update_visualization_paths(test_id, 'mlc', viz_paths)
+                    logger.info(f"[MLC-LEAF-JAW] Saved {len(viz_paths)} visualizations")
+            except Exception as viz_error:
+                logger.error(f"[MLC-LEAF-JAW] Error saving visualizations: {viz_error}")
+                # Continue even if visualization save fails
         
         logger.info(f"[MLC-LEAF-JAW] Saved test with ID: {test_id}")
         return JSONResponse({'success': True, 'test_id': test_id, 'message': 'MLC Leaf Jaw test saved successfully'})

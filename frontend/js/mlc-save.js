@@ -207,6 +207,11 @@ function prepareMLCTestData(analysisResult) {
     
     console.log('Prepared MLC data:', mlcData);
     
+    // Include visualizations for saving as image files
+    if (analysisResult.visualizations) {
+        mlcData.visualizations = analysisResult.visualizations;
+    }
+    
     return mlcData;
 }
 
@@ -223,9 +228,30 @@ function prepareMVICTestData(analysisResult) {
         notes: ''
     };
     
-    // Extract data from visualizations (contains statistics for each image)
-    if (analysisResult.visualizations && Array.isArray(analysisResult.visualizations)) {
-        console.log('Processing MVIC visualizations:', analysisResult.visualizations);
+    // First, try to extract data from file_results (most complete data)
+    if (analysisResult.file_results && Array.isArray(analysisResult.file_results)) {
+        console.log('Processing MVIC file_results:', analysisResult.file_results);
+        
+        analysisResult.file_results.forEach((fileResult, index) => {
+            const imageNum = index + 1;
+            const measurements = fileResult.measurements || {};
+            
+            mvicData[`image${imageNum}`] = {
+                width_mm: measurements.width_mm || 0,
+                height_mm: measurements.height_mm || 0,
+                avg_angle: measurements.avg_angle || 90.0,
+                angle_std_dev: measurements.angle_std_dev || 0,
+                top_left_angle: measurements.top_left_angle || 90.0,
+                top_right_angle: measurements.top_right_angle || 90.0,
+                bottom_left_angle: measurements.bottom_left_angle || 90.0,
+                bottom_right_angle: measurements.bottom_right_angle || 90.0
+            };
+        });
+    }
+    
+    // Fallback: Extract data from visualizations if file_results not available
+    if (!analysisResult.file_results && analysisResult.visualizations && Array.isArray(analysisResult.visualizations)) {
+        console.log('Processing MVIC visualizations (fallback):', analysisResult.visualizations);
         
         analysisResult.visualizations.forEach((viz, index) => {
             const imageNum = index + 1;
@@ -282,6 +308,22 @@ function prepareMVICTestData(analysisResult) {
     }
     
     console.log('Prepared MVIC data:', mvicData);
+    
+    // Include visualizations for saving as image files
+    if (analysisResult.visualizations) {
+        mvicData.visualizations = analysisResult.visualizations;
+    }
+    
+    // Include file_results with per-file metadata and detailed measurements
+    if (analysisResult.file_results) {
+        mvicData.file_results = analysisResult.file_results;
+    }
+    
+    // Include filenames for database storage
+    if (analysisResult.filenames) {
+        mvicData.filenames = analysisResult.filenames;
+    }
+    
     return mvicData;
 }
 
@@ -369,6 +411,10 @@ function enableMLCTestSave(analysisResult, testType = null) {
         testData = prepareGenericTestData(analysisResult);
         // Use detailed_results which has the slits array structure
         testData.results = analysisResult.detailed_results || [];
+        // Include visualizations for saving as image files
+        testData.visualizations = analysisResult.visualizations || [];
+        // Include file_results with per-file metadata
+        testData.file_results = analysisResult.file_results || [];
     } else {
         // For all other tests, use generic preparation
         testData = prepareGenericTestData(analysisResult);

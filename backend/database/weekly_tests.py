@@ -42,6 +42,7 @@ class MLCLeafJawTest(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
+    visualization_paths = Column(Text, nullable=True)  # JSON array of visualization file paths
     # Test-specific data columns
     center_u = Column(Float, nullable=True)
     center_v = Column(Float, nullable=True)
@@ -65,6 +66,8 @@ class MVICTest(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)  # Comma-separated list of filenames
+    visualization_paths = Column(Text, nullable=True)  # JSON array of visualization file paths
+    file_results = Column(Text, nullable=True)  # JSON string containing detailed measurement results
     # Image 1 measurements
     image1_width_mm = Column(Float, nullable=True)
     image1_height_mm = Column(Float, nullable=True)
@@ -121,6 +124,8 @@ class MVICFenteV2Test(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)  # Comma-separated list of filenames
+    visualization_paths = Column(Text, nullable=True)  # JSON array of visualization file paths
+    file_results = Column(Text, nullable=True)  # JSON string containing measurement results
 
 
 class MVICFenteV2Result(Base):

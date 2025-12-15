@@ -28,7 +28,7 @@ from mv_center_utils import get_mv_center
 logger = logging.getLogger(__name__)
 
 
-class MVICFenteV2Test(BaseTest):
+class MVICFenteTest(BaseTest):
     """
     Test for analyzing MLC slits (fentes) in MVIC images
     
@@ -41,7 +41,7 @@ class MVICFenteV2Test(BaseTest):
     
     def __init__(self):
         super().__init__(
-            test_name="MVIC Fente V2",
+            test_name="MVIC Fente",
             description="Analyse des fentes MLC - Largeur et espacement entre fentes"
         )
         # MV center coordinates (retrieved from database)
@@ -600,6 +600,6 @@ class MVICFenteV2Test(BaseTest):
 
 
 def test_mvic_fente_v2(files: List[str], operator: str, test_date: Optional[datetime] = None, notes: str = None):
-    """Standalone function for MVIC Fente V2"""
-    test = MVICFenteV2Test()
+    """Standalone function for MVIC Fente"""
+    test = MVICFenteTest()
     return test.execute(files, operator, test_date, notes)

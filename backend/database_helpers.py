@@ -20,8 +20,54 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import logging
 import os
+import json
 
 logger = logging.getLogger(__name__)
+
+
+def update_visualization_paths(test_id: int, test_type: str, paths: List[str]) -> bool:
+    """
+    Update visualization_paths field for a test
+    
+    Args:
+        test_id: Database ID of the test
+        test_type: Type of test (mlc, mvic, mvic_fente_v2)
+        paths: List of relative paths to visualization files
+        
+    Returns:
+        bool: True if successful
+    """
+    db = SessionLocal()
+    try:
+        # Map test type to database model
+        test_models = {
+            'mlc': MLCLeafJawTest,
+            'mvic': MVICTest,
+            'mvic_fente_v2': MVICFenteV2Test
+        }
+        
+        model = test_models.get(test_type)
+        if not model:
+            logger.error(f"Unknown test type: {test_type}")
+            return False
+        
+        test = db.query(model).filter(model.id == test_id).first()
+        if not test:
+            logger.error(f"Test not found: {test_type} ID {test_id}")
+            return False
+        
+        test.visualization_paths = json.dumps(paths)
+        db.commit()
+        logger.info(f"✓ Updated visualization paths for {test_type} test {test_id}")
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating visualization paths: {e}")
+        return False
+    finally:
+        db.close()
+
 
 
 def save_mvic_to_database(
@@ -30,7 +76,8 @@ def save_mvic_to_database(
     overall_result: str,
     results: List[Dict[str, Any]],
     notes: Optional[str] = None,
-    filenames: Optional[List[str]] = None
+    filenames: Optional[List[str]] = None,
+    file_results: Optional[List[Dict[str, Any]]] = None
 ) -> int:
     """
     Save MVIC test results to database
@@ -39,36 +86,60 @@ def save_mvic_to_database(
         operator: Name of operator
         test_date: Test date
         overall_result: PASS/FAIL/WARNING
-        results: List of results for each of 5 images
+        results: List of results for each of 5 images (legacy format)
         notes: Optional notes
         filenames: List of filenames
+        file_results: Optional list of file-level results for display (contains detailed measurements)
     
     Returns:
         test_id: ID of saved test
     """
     db = SessionLocal()
     try:
+        from datetime import datetime, timezone
+        
         # Create main test record
         test = MVICTest(
             test_date=test_date,
             operator=operator,
             overall_result=overall_result,
             notes=notes,
-            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+            upload_date=datetime.now(timezone.utc),
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None,
+            file_results=json.dumps(file_results) if file_results else None
         )
         db.add(test)
         db.flush()  # Get the test ID
         
         # Save results for each image
         for i, result in enumerate(results, 1):
+            # Try to get more detailed data from file_results if available
+            filename = os.path.basename(filenames[i-1]) if filenames and i <= len(filenames) else None
+            
+            # Extract corner angles from file_results if available
+            top_left = result.get('top_left_angle', 0)
+            top_right = result.get('top_right_angle', 0)
+            bottom_left = result.get('bottom_left_angle', 0)
+            bottom_right = result.get('bottom_right_angle', 0)
+            
+            # If file_results is provided, try to extract angles from there
+            if file_results and i <= len(file_results):
+                file_result = file_results[i-1]
+                measurements = file_result.get('measurements', {})
+                if measurements:
+                    top_left = measurements.get('top_left_angle', top_left)
+                    top_right = measurements.get('top_right_angle', top_right)
+                    bottom_left = measurements.get('bottom_left_angle', bottom_left)
+                    bottom_right = measurements.get('bottom_right_angle', bottom_right)
+            
             mvic_result = MVICResult(
                 test_id=test.id,
                 image_number=i,
-                filename=os.path.basename(filenames[i-1]) if filenames and i <= len(filenames) else None,
-                top_left_angle=result.get('top_left_angle', 0),
-                top_right_angle=result.get('top_right_angle', 0),
-                bottom_left_angle=result.get('bottom_left_angle', 0),
-                bottom_right_angle=result.get('bottom_right_angle', 0),
+                filename=filename,
+                top_left_angle=top_left,
+                top_right_angle=top_right,
+                bottom_left_angle=bottom_left,
+                bottom_right_angle=bottom_right,
                 height=result.get('height', 0),
                 width=result.get('width', 0)
             )
@@ -92,7 +163,8 @@ def save_mvic_fente_v2_to_database(
     overall_result: str,
     results: List[Dict[str, Any]],
     notes: Optional[str] = None,
-    filenames: Optional[List[str]] = None
+    filenames: Optional[List[str]] = None,
+    file_results: Optional[List[Dict[str, Any]]] = None
 ) -> int:
     """
     Save MVIC Fente V2 test results to database
@@ -104,6 +176,7 @@ def save_mvic_fente_v2_to_database(
         results: List of image results, each containing slits
         notes: Optional notes
         filenames: List of filenames
+        file_results: Optional list of file-level results for display
     
     Returns:
         test_id: ID of saved test
@@ -116,7 +189,8 @@ def save_mvic_fente_v2_to_database(
             operator=operator,
             overall_result=overall_result,
             notes=notes,
-            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None,
+            file_results=json.dumps(file_results) if file_results else None
         )
         db.add(test)
         db.flush()

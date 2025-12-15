@@ -227,10 +227,11 @@ function displayTests() {
                 hour: '2-digit', minute: '2-digit'
             }) : 'Unknown';
         
-        const uploadDate = new Date(test.upload_date).toLocaleDateString('fr-FR', { 
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-        });
+        const uploadDate = test.upload_date ? 
+            new Date(test.upload_date).toLocaleDateString('fr-FR', { 
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            }) : 'N/A';
         
         const result = (test.overall_result || 'N/A').toUpperCase();
         const testDisplayName = TEST_DISPLAY_NAMES[test.test_type] || test.test_type.toUpperCase();
@@ -290,7 +291,7 @@ async function viewTestDetail(testId, testType) {
             'safety_systems': 'safety-systems-sessions',
             'niveau_helium': 'niveau-helium-sessions',
             'mlc_leaf_jaw': 'mlc-leaf-jaw-sessions',
-            'mvic': 'mvic-sessions',
+            'mvic': 'mvic-test-sessions',
             'mvic_fente_v2': 'mvic-fente-v2-sessions',
             'piqt': 'piqt-sessions',
             'position_table': 'position-table-sessions',
@@ -349,9 +350,9 @@ function displayTestDetail(test) {
     
     // Display based on test type
     if (test.test_type === 'mvic') {
-        // MVIC test display
+        // MVIC-Champ test display
         summaryCard.innerHTML = `
-            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats MVIC</h3>
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats MVIC-Champ</h3>
             <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
                 <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
                     <span class="label">Image 1:</span>
@@ -379,8 +380,13 @@ function displayTestDetail(test) {
                 </div>
             </div>
             ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/mvic_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full MVIC-Champ Report →
+                </a>
+            </div>
         `;
-        // Hide visualizations and results table for MVIC tests
+        // Hide visualizations and results table for MVIC-Champ tests
         document.querySelector('.visualization-section').style.display = 'none';
         document.querySelector('.results-table-section').style.display = 'none';
     } else if (test.test_type === 'piqt') {
@@ -434,8 +440,57 @@ function displayTestDetail(test) {
                 </div>
             </div>
             ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/mlc_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full MLC Report →
+                </a>
+            </div>
         `;
         // Hide visualizations and results table for MLC tests
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
+    } else if (test.test_type === 'mvic_fente_v2') {
+        // MVIC Fente test display
+        summaryCard.innerHTML = `
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats MVIC Fente</h3>
+            <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Résultat:</span>
+                    <span class="value" style="font-size: 1em !important;"><strong>${test.overall_result || 'N/A'}</strong></span>
+                </div>
+            </div>
+            ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/mvic_fente_v2_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full MVIC Fente Report →
+                </a>
+            </div>
+        `;
+        // Hide visualizations and results table for MVIC Fente tests
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
+    } else if (test.test_type === 'niveau_helium') {
+        // Niveau Helium test display
+        summaryCard.innerHTML = `
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats Niveau Helium</h3>
+            <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Niveau Helium:</span>
+                    <span class="value" style="font-size: 1em !important;">${fmt(test.helium_level)}%</span>
+                </div>
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Résultat:</span>
+                    <span class="value" style="font-size: 1em !important;"><strong>${test.overall_result || 'N/A'}</strong></span>
+                </div>
+            </div>
+            ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/niveau_helium_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full Niveau Helium Report →
+                </a>
+            </div>
+        `;
+        // Hide visualizations and results table for Niveau Helium tests
         document.querySelector('.visualization-section').style.display = 'none';
         document.querySelector('.results-table-section').style.display = 'none';
     } else {
@@ -534,7 +589,7 @@ async function deleteTest() {
             'safety_systems': 'safety-systems-sessions',
             'niveau_helium': 'niveau-helium-sessions',
             'mlc_leaf_jaw': 'mlc-test-sessions',
-            'mvic': 'mvic-sessions',
+            'mvic': 'mvic-test-sessions',
             'mvic_fente_v2': 'mvic-fente-v2-sessions',
             'piqt': 'piqt-sessions',
             'position_table_v2': 'position-table-sessions',

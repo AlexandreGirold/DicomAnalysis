@@ -123,14 +123,40 @@ async def save_mvic_fente_v2_session(data: dict):
         if 'operator' not in data or not data['operator']:
             raise ValueError("operator is required")
         
+        # Save the test first to get an ID
         test_id = database_helpers.save_mvic_fente_v2_to_database(
             operator=data['operator'],
             test_date=test_date,
             overall_result=data.get('overall_result', 'PASS'),
             results=data.get('results', []),
             notes=data.get('notes'),
-            filenames=data.get('filenames', [])
+            filenames=data.get('filenames', []),
+            file_results=data.get('file_results')  # Pass file_results
         )
+        
+        # Save visualizations if present
+        visualizations = data.get('visualizations', [])
+        if visualizations:
+            try:
+                import sys
+                import os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'services'))
+                from visualization_storage import save_multiple_visualizations
+                
+                saved_viz = save_multiple_visualizations(
+                    visualizations=visualizations,
+                    test_type='mvic_fente_v2',
+                    test_id=test_id
+                )
+                
+                # Update test with visualization paths
+                if saved_viz:
+                    viz_paths = [v.get('file_path') for v in saved_viz if v.get('file_path')]
+                    database_helpers.update_visualization_paths(test_id, 'mvic_fente_v2', viz_paths)
+                    logger.info(f"[MVIC-FENTE-V2] Saved {len(viz_paths)} visualizations")
+            except Exception as viz_error:
+                logger.error(f"[MVIC-FENTE-V2] Error saving visualizations: {viz_error}")
+                # Continue even if visualization save fails
         
         logger.info(f"[MVIC-FENTE-V2] Saved test with ID: {test_id}")
         return JSONResponse({'success': True, 'test_id': test_id, 'message': 'MVIC Fente V2 test saved successfully'})

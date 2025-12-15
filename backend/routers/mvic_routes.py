@@ -66,8 +66,34 @@ async def save_mvic_test_session(data: dict):
             overall_result=data.get('overall_result', 'PASS'),
             results=results,
             notes=data.get('notes'),
-            filenames=data.get('filenames')
+            filenames=data.get('filenames'),
+            file_results=data.get('file_results')  # Include detailed results per file
         )
+        
+        # Save visualizations if present
+        visualizations = data.get('visualizations', [])
+        if visualizations:
+            try:
+                import sys
+                import os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'services'))
+                from visualization_storage import save_multiple_visualizations
+                from database_helpers import update_visualization_paths
+                
+                saved_viz = save_multiple_visualizations(
+                    visualizations=visualizations,
+                    test_type='mvic',
+                    test_id=test_id
+                )
+                
+                # Update test with visualization paths
+                if saved_viz:
+                    viz_paths = [v.get('file_path') for v in saved_viz if v.get('file_path')]
+                    update_visualization_paths(test_id, 'mvic', viz_paths)
+                    logger.info(f"[MVIC-SESSION] Saved {len(viz_paths)} visualizations")
+            except Exception as viz_error:
+                logger.error(f"[MVIC-SESSION] Error saving visualizations: {viz_error}")
+                # Continue even if visualization save fails
         
         logger.info(f"[MVIC-SESSION] Saved test session with ID: {test_id}")
         
@@ -108,6 +134,7 @@ async def get_mvic_test_sessions(limit: int = 100, offset: int = 0, start_date: 
             test_dict = {
                 'id': test.id,
                 'test_date': test.test_date.isoformat(),
+                'upload_date': test.upload_date.isoformat() if test.upload_date else None,
                 'operator': test.operator,
                 'overall_result': test.overall_result,
                 'notes': test.notes,
@@ -129,6 +156,7 @@ async def get_mvic_test_session(test_id: int):
     logger.info(f"[MVIC-SESSION] Getting test ID: {test_id}")
     try:
         from database import SessionLocal, MVICTest, MVICResult
+        import json
         db_session = SessionLocal()
         
         test = db_session.query(MVICTest).filter(MVICTest.id == test_id).first()
@@ -137,26 +165,54 @@ async def get_mvic_test_session(test_id: int):
             db_session.close()
             raise HTTPException(status_code=404, detail="Test session not found")
         
-        results = db_session.query(MVICResult).filter(MVICResult.test_id == test_id).all()
+        results = db_session.query(MVICResult).filter(MVICResult.test_id == test_id).order_by(MVICResult.image_number).all()
         
+        # Build test_dict with image1-5 format for review.js compatibility
         test_dict = {
             'id': test.id,
             'test_date': test.test_date.isoformat(),
+            'upload_date': test.upload_date.isoformat() if test.upload_date else None,
             'operator': test.operator,
             'overall_result': test.overall_result,
             'notes': test.notes,
             'filenames': test.filenames,
-            'results': [{
-                'image_number': r.image_number,
-                'filename': r.filename,
+            'visualization_paths': test.visualization_paths,
+            'file_results': test.file_results
+        }
+        
+        # Add image1-5 properties for review.js compatibility
+        for r in results:
+            img_num = r.image_number
+            # Calculate average and std dev of corner angles
+            angles = [r.top_left_angle, r.top_right_angle, r.bottom_left_angle, r.bottom_right_angle]
+            avg_angle = sum(angles) / len(angles)
+            # Calculate standard deviation
+            variance = sum((x - avg_angle) ** 2 for x in angles) / len(angles)
+            std_dev = variance ** 0.5
+            
+            test_dict[f'image{img_num}'] = {
+                'width_mm': r.width,
+                'height_mm': r.height,
+                'avg_angle': round(avg_angle, 3),  # Show 3 decimal places
+                'angle_std_dev': round(std_dev, 3),
                 'top_left_angle': r.top_left_angle,
                 'top_right_angle': r.top_right_angle,
                 'bottom_left_angle': r.bottom_left_angle,
                 'bottom_right_angle': r.bottom_right_angle,
-                'height': r.height,
-                'width': r.width
-            } for r in results]
-        }
+                'filename': r.filename
+            }
+        
+        # Also include results array for backward compatibility
+        test_dict['results'] = [{
+            'image_number': r.image_number,
+            'filename': r.filename,
+            'top_left_angle': r.top_left_angle,
+            'top_right_angle': r.top_right_angle,
+            'bottom_left_angle': r.bottom_left_angle,
+            'bottom_right_angle': r.bottom_right_angle,
+            'height': r.height,
+            'width': r.width
+        } for r in results]
         
         db_session.close()
         logger.info(f"[MVIC-SESSION] Retrieved test session")

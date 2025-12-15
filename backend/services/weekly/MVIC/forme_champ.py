@@ -271,8 +271,8 @@ class FieldShapeValidator:
                 
                 angles.append({
                     'corner': p2.tolist(),
-                    'angle': angle_deg,
-                    'index': i
+                    'angle': float(angle_deg),
+                    'index': int(i)
                 })
         
         return {
@@ -300,8 +300,10 @@ class FieldShapeValidator:
             angle = angle_info['angle']
             error = abs(angle - self.expected_angle)
             
-            angle_info['error'] = error
-            angle_info['is_valid'] = error <= self.angle_tolerance
+            # Convert numpy types to Python native types for JSON serialization
+            angle_info['angle'] = float(angle)
+            angle_info['error'] = float(error)
+            angle_info['is_valid'] = bool(error <= self.angle_tolerance)
             
             if not angle_info['is_valid']:
                 invalid_angles.append(angle_info)
@@ -317,7 +319,7 @@ class FieldShapeValidator:
             'is_valid': is_valid,
             'angles': angles,
             'invalid_angles': invalid_angles,
-            'num_corners': len(angles),
+            'num_corners': int(len(angles)),
             'message': message
         }
     

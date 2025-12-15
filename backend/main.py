@@ -91,6 +91,7 @@ from routers.mlc_routes import router as mlc_router
 from routers.mvic_routes import router as mvic_router
 from routers.test_execution import router as test_execution_router
 from routers.result_display_router import router as result_display_router
+from routers.config_routes import router as config_router
 
 # Include routers by frequency
 app.include_router(daily_router, tags=["Daily Tests"])
@@ -100,7 +101,8 @@ app.include_router(mlc_router, tags=["MLC Analysis"])
 app.include_router(mvic_router, tags=["MVIC Analysis"])
 app.include_router(test_execution_router, tags=["Test Execution"])
 app.include_router(result_display_router, tags=["Result Display"])
-logger.info("Registered all routers (Daily/Weekly/Monthly + MLC/MVIC + Test Execution + Result Display)")
+app.include_router(config_router, tags=["Configuration"])
+logger.info("Registered all routers (Daily/Weekly/Monthly + MLC/MVIC + Test Execution + Result Display + Config)")
 
 # Mount static files (frontend)
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"

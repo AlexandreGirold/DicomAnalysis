@@ -42,7 +42,7 @@ class MVICFenteTest(BaseTest):
             description="Analyse des bandes noires dans les images MV - Position, largeur, hauteur"
         )
         # Get MV center from database
-        self.center_u, self.center_v = self._get_mv_center_from_db()
+        self.center_u, self.center_v = get_mv_center()
         # Detection thresholds
         self.band_detection_percentile = 5  # Pixels below this percentile are considered "dark" (very strict - only darkest pixels)
         self.min_band_height = 10  # Minimum height in pixels for a valid band
