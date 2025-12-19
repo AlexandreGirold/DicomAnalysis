@@ -1,6 +1,6 @@
 """
-MVIC Result Display
-Retrieve and format MVIC test results from database (5 images with dimensions and angles)
+MVIC-Champ Result Display
+Retrieve and format MVIC-Champ test results from database (5 images with dimensions and angles)
 """
 import sys
 import os
@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 def display_mvic_result(test_id: int) -> Optional[Dict]:
     """
-    Retrieve and format MVIC test result from database
+    Retrieve and format MVIC-Champ test result from database
     
     Args:
-        test_id: Database ID of the MVIC test
+        test_id: Database ID of the MVIC-Champ test
         
     Returns:
         dict: Formatted test result with all 5 image analyses

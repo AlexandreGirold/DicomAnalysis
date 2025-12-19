@@ -202,3 +202,44 @@ class PIQTResult(Base):
     spatial_resolution_nema_hor_pxl_size2 = Column(Float, nullable=True)
     spatial_resolution_nema_ver_pxl_size1 = Column(Float, nullable=True)
     spatial_resolution_nema_ver_pxl_size2 = Column(Float, nullable=True)
+
+
+class LeafPositionTest(Base):
+    """Weekly Leaf Position Test - MLC Blade Position and Length Analysis"""
+    __tablename__ = "weekly_leaf_position"
+
+    id = Column(Integer, primary_key=True, index=True)
+    test_date = Column(DateTime, nullable=False, index=True)
+    operator = Column(String, nullable=False)
+    upload_date = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    overall_result = Column(String, nullable=False)
+    notes = Column(Text, nullable=True)
+    filenames = Column(Text, nullable=True)  # Comma-separated list of filenames
+    visualization_paths = Column(Text, nullable=True)  # JSON array of visualization file paths
+    file_results = Column(Text, nullable=True)  # JSON string containing detailed measurement results
+
+
+class LeafPositionResult(Base):
+    """Results table for Leaf Position Test - stores data for each blade"""
+    __tablename__ = "weekly_leaf_position_results"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(Integer, ForeignKey('weekly_leaf_position.id'), nullable=False)
+    image_number = Column(Integer, nullable=False)  # Which image/file
+    filename = Column(String, nullable=True)
+    blade_pair = Column(Integer, nullable=False)  # Blade pair number (27-54)
+    
+    # Position coordinates
+    position_u_px = Column(Float, nullable=True)  # Horizontal position in pixels
+    v_sup_px = Column(Float, nullable=True)  # Top edge V coordinate in pixels
+    v_inf_px = Column(Float, nullable=True)  # Bottom edge V coordinate in pixels
+    
+    # Distance measurements
+    distance_sup_mm = Column(Float, nullable=True)  # Distance from center to top edge in mm
+    distance_inf_mm = Column(Float, nullable=True)  # Distance from center to bottom edge in mm
+    length_mm = Column(Float, nullable=True)  # Total blade length in mm
+    
+    # Validation
+    field_size_mm = Column(Float, nullable=True)  # Detected field size (20, 30, or 40mm expected)
+    is_valid = Column(String, nullable=False)  # 'OK', 'OUT_OF_TOLERANCE', or 'CLOSED'
+    status_message = Column(Text, nullable=True)  # Detailed status message

@@ -247,14 +247,27 @@ class MLCBladeAnalyzer:
                 # Calculate field size (distance between superior and inferior edges)
                 field_size = abs(distance_t - distance_p)
                 
-                # Check if field size is within tolerance
-                expected_min = self.expected_field_size - self.field_size_tolerance
-                expected_max = self.expected_field_size + self.field_size_tolerance
+                # Check if field size matches any valid size (20, 30, or 40mm) within tolerance
+                valid_field_sizes = [20.0, 30.0, 40.0]
+                tolerance = self.field_size_tolerance
                 
-                if expected_min <= field_size <= expected_max:
+                is_valid = False
+                closest_size = None
+                min_diff = float('inf')
+                
+                for valid_size in valid_field_sizes:
+                    diff = abs(field_size - valid_size)
+                    if diff < min_diff:
+                        min_diff = diff
+                        closest_size = valid_size
+                    if diff <= tolerance:
+                        is_valid = True
+                        break
+                
+                if is_valid:
                     status = "OK"
                 else:
-                    status = f"OUT_OF_TOLERANCE (expected {self.expected_field_size}±{self.field_size_tolerance}mm)"
+                    status = f"OUT_OF_TOLERANCE (closest to {closest_size}mm, off by {min_diff:.1f}mm)"
                 
                 print(f"{pair_lame}\t{distance_t:.3f}\t{distance_p:.3f}\t{field_size:.3f}\t{status}")
                 
@@ -298,29 +311,19 @@ class MLCBladeAnalyzer:
     
     def visualize_detection(self, original_image, edges, detected_points_a, detected_points_b, filename):
         """Create visualization of blade detection"""
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig, axes = plt.subplots(2, 2, figsize=(18, 14))
         
-        # 1. Original image
-        axes[0, 0].imshow(original_image, cmap='gray')
-        axes[0, 0].set_title('Original DICOM Image')
-        axes[0, 0].axis('off')
-        
-        # 2. Edge detection
-        axes[0, 1].imshow(edges, cmap='gray')
-        axes[0, 1].set_title('Edge Detection')
-        axes[0, 1].axis('off')
-        
-        # 3. Detected blades on original
-        axes[1, 0].imshow(original_image, cmap='gray', alpha=0.7)
-        axes[1, 0].axhline(y=self.center_v, color='cyan', linestyle='--', linewidth=1, label='Center V')
-        axes[1, 0].axvline(x=self.center_u, color='cyan', linestyle='--', linewidth=1, label='Center U')
+        # 1. Detected blades on original
+        axes[0, 0].imshow(original_image, cmap='gray', alpha=0.7)
+        axes[0, 0].axhline(y=self.center_v, color='cyan', linestyle='--', linewidth=1, label='Center V')
+        axes[0, 0].axvline(x=self.center_u, color='cyan', linestyle='--', linewidth=1, label='Center U')
         
         # Plot detected points for section A
         for point in detected_points_a:
             if point['status'] == 'CLOSED':
                 # Mark closed blades with an X
-                axes[1, 0].plot(point['u'], self.center_v, 'kx', markersize=8, markeredgewidth=2)
-                axes[1, 0].text(point['u'], self.center_v-15, f"{point['pair']}\nCLOSED", 
+                axes[0, 0].plot(point['u'], self.center_v, 'kx', markersize=8, markeredgewidth=2)
+                axes[0, 0].text(point['u'], self.center_v-15, f"{point['pair']}\nCLOSED", 
                               color='black', fontsize=5, ha='center', weight='bold')
             elif point['v_sup'] is not None and point['v_inf'] is not None:
                 # Color code based on tolerance
@@ -333,24 +336,24 @@ class MLCBladeAnalyzer:
                     color_inf = 'green'
                     marker_size = 4
                 
-                axes[1, 0].plot(point['u'], point['v_sup'], 'o', color=color_sup, markersize=marker_size)
-                axes[1, 0].plot(point['u'], point['v_inf'], 'o', color=color_inf, markersize=marker_size)
+                axes[0, 0].plot(point['u'], point['v_sup'], 'o', color=color_sup, markersize=marker_size)
+                axes[0, 0].plot(point['u'], point['v_inf'], 'o', color=color_inf, markersize=marker_size)
                 
                 # Label with blade pair number only (no field size to avoid clutter)
                 label_text = f"{point['pair']}"
                 if 'OUT_OF_TOLERANCE' in point['status']:
-                    axes[1, 0].text(point['u'], point['v_sup']-10, label_text, 
+                    axes[0, 0].text(point['u'], point['v_sup']-10, label_text, 
                                   color='orange', fontsize=6, ha='center', weight='bold')
                 else:
-                    axes[1, 0].text(point['u'], point['v_sup']-10, label_text, 
+                    axes[0, 0].text(point['u'], point['v_sup']-10, label_text, 
                                   color='red', fontsize=6, ha='center')
         
         # Plot detected points for section B
         for point in detected_points_b:
             if point['status'] == 'CLOSED':
                 # Mark closed blades with an X
-                axes[1, 0].plot(point['u'], self.center_v, 'kx', markersize=8, markeredgewidth=2)
-                axes[1, 0].text(point['u'], self.center_v-15, f"{point['pair']}\nCLOSED", 
+                axes[0, 0].plot(point['u'], self.center_v, 'kx', markersize=8, markeredgewidth=2)
+                axes[0, 0].text(point['u'], self.center_v-15, f"{point['pair']}\nCLOSED", 
                               color='black', fontsize=5, ha='center', weight='bold')
             elif point['v_sup'] is not None and point['v_inf'] is not None:
                 # Color code based on tolerance
@@ -363,25 +366,103 @@ class MLCBladeAnalyzer:
                     color_inf = 'green'
                     marker_size = 4
                 
-                axes[1, 0].plot(point['u'], point['v_sup'], 'o', color=color_sup, markersize=marker_size)
-                axes[1, 0].plot(point['u'], point['v_inf'], 'o', color=color_inf, markersize=marker_size)
+                axes[0, 0].plot(point['u'], point['v_sup'], 'o', color=color_sup, markersize=marker_size)
+                axes[0, 0].plot(point['u'], point['v_inf'], 'o', color=color_inf, markersize=marker_size)
                 
                 # Label with blade pair number only (no field size to avoid clutter)
                 label_text = f"{point['pair']}"
                 if 'OUT_OF_TOLERANCE' in point['status']:
-                    axes[1, 0].text(point['u'], point['v_sup']-10, label_text, 
+                    axes[0, 0].text(point['u'], point['v_sup']-10, label_text, 
                                   color='orange', fontsize=6, ha='center', weight='bold')
                 else:
-                    axes[1, 0].text(point['u'], point['v_sup']-10, label_text, 
+                    axes[0, 0].text(point['u'], point['v_sup']-10, label_text, 
                                   color='red', fontsize=6, ha='center')
         
-        axes[1, 0].set_title('Detected Blade Positions\n(Red/Green: OK, Orange: Out of Tolerance, Black X: Closed)')
-        axes[1, 0].legend()
+        axes[0, 0].set_title('Detected Blade Positions\n(Red/Green: OK, Orange: Out of Tolerance, Black X: Closed)', fontweight='bold')
+        axes[0, 0].legend()
         
-        # 4. Field size plot with tolerance bands
+        # 2. Coordinates Table (Top half - Blades 27-40)
+        axes[0, 1].axis('off')
         all_points = detected_points_a + detected_points_b
         all_points_sorted = sorted(all_points, key=lambda x: x['pair'])
         
+        # Split data into two tables
+        mid_point = len(all_points_sorted) // 2
+        table_data_1 = []
+        for point in all_points_sorted[:mid_point]:
+            if point['field_size'] is not None:
+                table_data_1.append([
+                    f"{point['pair']}",
+                    f"{point['v_sup']:.0f}" if point['v_sup'] else "—",
+                    f"{point['v_inf']:.0f}" if point['v_inf'] else "—",
+                    f"{point['distance_sup']:.2f}" if point['distance_sup'] else "—",
+                    f"{point['distance_inf']:.2f}" if point['distance_inf'] else "—",
+                    f"{point['field_size']:.2f}",
+                    "✓" if 'OK' in point['status'] else "✗"
+                ])
+            else:
+                table_data_1.append([
+                    f"{point['pair']}", "—", "—", "—", "—", "CLOSED", "—"
+                ])
+        
+        table1 = axes[0, 1].table(cellText=table_data_1,
+                                  colLabels=['Blade', 'V_sup\n(px)', 'V_inf\n(px)', 'Top\n(mm)', 'Bottom\n(mm)', 'Size\n(mm)', 'OK'],
+                                  cellLoc='center',
+                                  loc='center',
+                                  colWidths=[0.12, 0.15, 0.15, 0.15, 0.15, 0.15, 0.08])
+        table1.auto_set_font_size(False)
+        table1.set_fontsize(7)
+        table1.scale(1, 1.5)
+        
+        # Color code the status column
+        for i, point in enumerate(all_points_sorted[:mid_point]):
+            if point['field_size'] is not None:
+                if 'OK' in point['status']:
+                    table1[(i+1, 6)].set_facecolor('#90EE90')  # Light green
+                else:
+                    table1[(i+1, 6)].set_facecolor('#FFB6C6')  # Light red
+        
+        axes[0, 1].set_title('Blade Coordinates (Part 1)', fontweight='bold')
+        
+        # 3. Coordinates Table (Bottom half - Blades 41-54)
+        axes[1, 0].axis('off')
+        table_data_2 = []
+        for point in all_points_sorted[mid_point:]:
+            if point['field_size'] is not None:
+                table_data_2.append([
+                    f"{point['pair']}",
+                    f"{point['v_sup']:.0f}" if point['v_sup'] else "—",
+                    f"{point['v_inf']:.0f}" if point['v_inf'] else "—",
+                    f"{point['distance_sup']:.2f}" if point['distance_sup'] else "—",
+                    f"{point['distance_inf']:.2f}" if point['distance_inf'] else "—",
+                    f"{point['field_size']:.2f}",
+                    "✓" if 'OK' in point['status'] else "✗"
+                ])
+            else:
+                table_data_2.append([
+                    f"{point['pair']}", "—", "—", "—", "—", "CLOSED", "—"
+                ])
+        
+        table2 = axes[1, 0].table(cellText=table_data_2,
+                                  colLabels=['Blade', 'V_sup\n(px)', 'V_inf\n(px)', 'Top\n(mm)', 'Bottom\n(mm)', 'Size\n(mm)', 'OK'],
+                                  cellLoc='center',
+                                  loc='center',
+                                  colWidths=[0.12, 0.15, 0.15, 0.15, 0.15, 0.15, 0.08])
+        table2.auto_set_font_size(False)
+        table2.set_fontsize(7)
+        table2.scale(1, 1.5)
+        
+        # Color code the status column
+        for i, point in enumerate(all_points_sorted[mid_point:]):
+            if point['field_size'] is not None:
+                if 'OK' in point['status']:
+                    table2[(i+1, 6)].set_facecolor('#90EE90')  # Light green
+                else:
+                    table2[(i+1, 6)].set_facecolor('#FFB6C6')  # Light red
+        
+        axes[1, 0].set_title('Blade Coordinates (Part 2)', fontweight='bold')
+        
+        # 4. Field size plot with tolerance bands
         pairs = [p['pair'] for p in all_points_sorted if p['field_size'] is not None]
         field_sizes = [p['field_size'] for p in all_points_sorted if p['field_size'] is not None]
         statuses = [p['status'] for p in all_points_sorted if p['field_size'] is not None]
@@ -392,11 +473,20 @@ class MLCBladeAnalyzer:
         pairs_bad = [pairs[i] for i in range(len(pairs)) if 'OUT_OF_TOLERANCE' in statuses[i]]
         field_sizes_bad = [field_sizes[i] for i in range(len(field_sizes)) if 'OUT_OF_TOLERANCE' in statuses[i]]
         
-        # Plot tolerance bands
-        axes[1, 1].axhline(y=self.expected_field_size, color='green', linestyle='-', linewidth=2, label=f'Expected ({self.expected_field_size}mm)', alpha=0.7)
-        axes[1, 1].axhspan(self.expected_field_size - self.field_size_tolerance, 
-                          self.expected_field_size + self.field_size_tolerance, 
-                          color='green', alpha=0.1, label=f'Tolerance ±{self.field_size_tolerance}mm')
+        # Plot tolerance bands for valid field sizes (20, 30, 40mm)
+        valid_field_sizes = [20.0, 30.0, 40.0]
+        tolerance = self.field_size_tolerance
+        colors = ['blue', 'purple', 'green']
+        
+        for valid_size, color in zip(valid_field_sizes, colors):
+            axes[1, 1].axhline(y=valid_size, color=color, linestyle='-', linewidth=1.5, alpha=0.7)
+            axes[1, 1].axhspan(valid_size - tolerance, valid_size + tolerance, 
+                              color=color, alpha=0.05)
+        
+        # Add legend for tolerance bands
+        axes[1, 1].text(0.02, 0.98, f'Valid sizes: 20mm, 30mm, 40mm (±{tolerance}mm)', 
+                       transform=axes[1, 1].transAxes, fontsize=9, 
+                       verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
         
         # Plot field sizes
         if pairs_ok:
@@ -406,7 +496,7 @@ class MLCBladeAnalyzer:
         
         axes[1, 1].set_xlabel('Blade Pair Number')
         axes[1, 1].set_ylabel('Field Size (mm)')
-        axes[1, 1].set_title(f'Field Size per Blade Pair (Expected: {self.expected_field_size}±{self.field_size_tolerance}mm)')
+        axes[1, 1].set_title(f'Field Size per Blade Pair (Valid: 20mm, 30mm, 40mm ±{tolerance}mm)')
         axes[1, 1].legend()
         axes[1, 1].grid(True, alpha=0.3)
         

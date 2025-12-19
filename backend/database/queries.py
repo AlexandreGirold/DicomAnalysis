@@ -9,7 +9,7 @@ from . import (
     SafetySystemsTest, NiveauHeliumTest, MLCLeafJawTest,
     MVICTest, PIQTTest, PositionTableV2Test,
     AlignementLaserTest, QuasarTest, IndiceQualityTest,
-    MVICFenteV2Test
+    MVICFenteV2Test, LeafPositionTest, LeafPositionResult
 )
 
 
@@ -220,3 +220,107 @@ def get_indice_quality_test_by_id(test_id: int) -> Optional[Dict]:
 
 def delete_indice_quality_test(test_id: int) -> bool:
     return delete_test_by_id_generic(IndiceQualityTest, test_id)
+
+
+# Leaf Position (Weekly)
+def get_all_leaf_position_tests(limit: int = 100, offset: int = 0, 
+                                 start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict]:
+    """Get all Leaf Position tests with blade results"""
+    db = SessionLocal()
+    try:
+        query = db.query(LeafPositionTest).order_by(desc(LeafPositionTest.test_date))
+        
+        if start_date:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            query = query.filter(LeafPositionTest.test_date >= start_dt)
+        
+        if end_date:
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            query = query.filter(LeafPositionTest.test_date <= end_dt)
+        
+        tests = query.offset(offset).limit(limit).all()
+        
+        result = []
+        for test in tests:
+            test_dict = _test_to_dict(test)
+            # Add blade results
+            blade_results = db.query(LeafPositionResult).filter(
+                LeafPositionResult.test_id == test.id
+            ).all()
+            test_dict['blade_results'] = [
+                {
+                    'image_number': br.image_number,
+                    'filename': br.filename,
+                    'blade_pair': br.blade_pair,
+                    'position_u_px': br.position_u_px,
+                    'v_sup_px': br.v_sup_px,
+                    'v_inf_px': br.v_inf_px,
+                    'distance_sup_mm': br.distance_sup_mm,
+                    'distance_inf_mm': br.distance_inf_mm,
+                    'length_mm': br.length_mm,
+                    'field_size_mm': br.field_size_mm,
+                    'is_valid': br.is_valid,
+                    'status_message': br.status_message
+                }
+                for br in blade_results
+            ]
+            result.append(test_dict)
+        
+        return result
+    finally:
+        db.close()
+
+
+def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
+    """Get a Leaf Position test by ID with all blade results"""
+    db = SessionLocal()
+    try:
+        test = db.query(LeafPositionTest).filter(LeafPositionTest.id == test_id).first()
+        if not test:
+            return None
+        
+        test_dict = _test_to_dict(test)
+        # Add blade results
+        blade_results = db.query(LeafPositionResult).filter(
+            LeafPositionResult.test_id == test.id
+        ).all()
+        test_dict['blade_results'] = [
+            {
+                'image_number': br.image_number,
+                'filename': br.filename,
+                'blade_pair': br.blade_pair,
+                'position_u_px': br.position_u_px,
+                'v_sup_px': br.v_sup_px,
+                'v_inf_px': br.v_inf_px,
+                'distance_sup_mm': br.distance_sup_mm,
+                'distance_inf_mm': br.distance_inf_mm,
+                'length_mm': br.length_mm,
+                'field_size_mm': br.field_size_mm,
+                'is_valid': br.is_valid,
+                'status_message': br.status_message
+            }
+            for br in blade_results
+        ]
+        
+        return test_dict
+    finally:
+        db.close()
+
+
+def delete_leaf_position_test(test_id: int) -> bool:
+    """Delete a Leaf Position test and all associated blade results"""
+    db = SessionLocal()
+    try:
+        # Delete associated blade results first
+        db.query(LeafPositionResult).filter(LeafPositionResult.test_id == test_id).delete()
+        
+        # Delete test
+        test = db.query(LeafPositionTest).filter(LeafPositionTest.id == test_id).first()
+        if test:
+            db.delete(test)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
+

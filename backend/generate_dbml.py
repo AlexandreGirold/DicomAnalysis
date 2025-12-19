@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import (
     SafetySystemsTest,
     NiveauHeliumTest, MLCLeafJawTest, MVICTest, PIQTTest, MVICFenteV2Test,
+    LeafPositionTest,
     PositionTableV2Test, AlignementLaserTest, QuasarTest, IndiceQualityTest,
     MVCenterConfig
 )
@@ -188,6 +189,36 @@ def generate_dbml():
         output.append("Table weekly_piqt_results {")
         output.append("  id integer [primary key]")
         output.append("  test_id integer [ref: > weekly_piqt.id]")
+        output.append("}\n")
+    
+    output.append("Table weekly_leaf_position {")
+    output.extend(get_column_info(LeafPositionTest))
+    output.append("}\n")
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='weekly_leaf_position_results'")
+    if cursor.fetchone():
+        cursor.execute("PRAGMA table_info(weekly_leaf_position_results)")
+        cols = cursor.fetchall()
+        output.append("Table weekly_leaf_position_results {")
+        for col in cols:
+            col_name = col[1]
+            col_type = col[2].lower()
+            is_pk = col[5] == 1
+            
+            if 'int' in col_type:
+                db_type = 'integer'
+            elif 'real' in col_type or 'float' in col_type:
+                db_type = 'float'
+            elif 'text' in col_type:
+                db_type = 'text'
+            else:
+                db_type = 'varchar'
+            
+            attr = " [primary key]" if is_pk else ""
+            if col_name == 'test_id' and not is_pk:
+                attr = " [ref: > weekly_leaf_position.id]"
+            
+            output.append(f"  {col_name} {db_type}{attr}")
         output.append("}\n")
     
     # CONFIGURATION TABLES

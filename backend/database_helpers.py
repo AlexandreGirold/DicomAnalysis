@@ -10,6 +10,7 @@ from database import (
     MLCLeafJawTest,
     NiveauHeliumTest, NiveauHeliumResult,
     PIQTTest, PIQTResult,
+    LeafPositionTest, LeafPositionResult,
     SafetySystemsTest,
     PositionTableV2Test,
     AlignementLaserTest,
@@ -43,7 +44,8 @@ def update_visualization_paths(test_id: int, test_type: str, paths: List[str]) -
         test_models = {
             'mlc': MLCLeafJawTest,
             'mvic': MVICTest,
-            'mvic_fente_v2': MVICFenteV2Test
+            'mvic_fente_v2': MVICFenteV2Test,
+            'leaf_position': LeafPositionTest
         }
         
         model = test_models.get(test_type)
@@ -80,7 +82,7 @@ def save_mvic_to_database(
     file_results: Optional[List[Dict[str, Any]]] = None
 ) -> int:
     """
-    Save MVIC test results to database
+    Save MVIC-Champ test results to database
     
     Args:
         operator: Name of operator
@@ -146,12 +148,12 @@ def save_mvic_to_database(
             db.add(mvic_result)
         
         db.commit()
-        logger.info(f"✓ Saved MVIC test to database (ID: {test.id})")
+        logger.info(f"✓ Saved MVIC-Champ test to database (ID: {test.id})")
         return test.id
         
     except Exception as e:
         db.rollback()
-        logger.error(f"Error saving MVIC test to database: {e}")
+        logger.error(f"Error saving MVIC-Champ test to database: {e}")
         raise
     finally:
         db.close()
@@ -226,6 +228,88 @@ def save_mvic_fente_v2_to_database(
     except Exception as e:
         db.rollback()
         logger.error(f"Error saving MVIC Fente V2 test to database: {e}")
+        raise
+    finally:
+        db.close()
+
+
+def save_leaf_position_to_database(
+    operator: str,
+    test_date: datetime,
+    overall_result: str,
+    results: List[Dict[str, Any]],
+    notes: Optional[str] = None,
+    filenames: Optional[List[str]] = None,
+    file_results: Optional[List[Dict[str, Any]]] = None,
+    visualization_paths: Optional[List[str]] = None
+) -> int:
+    """
+    Save Leaf Position test results to database
+    
+    Args:
+        operator: Name of operator
+        test_date: Test date
+        overall_result: PASS/FAIL/WARNING
+        results: List of blade results from each image
+        notes: Optional notes
+        filenames: List of filenames
+        file_results: Optional list of file-level results for display
+        visualization_paths: List of visualization file paths
+    
+    Returns:
+        test_id: ID of saved test
+    """
+    db = SessionLocal()
+    try:
+        # Create main test record
+        test = LeafPositionTest(
+            test_date=test_date,
+            operator=operator,
+            overall_result=overall_result,
+            notes=notes,
+            filenames=",".join([os.path.basename(f) for f in filenames]) if filenames else None,
+            file_results=json.dumps(file_results) if file_results else None,
+            visualization_paths=json.dumps(visualization_paths) if visualization_paths else None
+        )
+        db.add(test)
+        db.flush()
+        
+        # Save results for each blade in each image
+        for image_idx, image_result in enumerate(results, 1):
+            filename = os.path.basename(filenames[image_idx-1]) if filenames and image_idx <= len(filenames) else None
+            
+            # Handle both dict and string (skip strings)
+            if not isinstance(image_result, dict):
+                logger.warning(f"Skipping non-dict image_result at index {image_idx}: {type(image_result)}")
+                continue
+            
+            # Each image has multiple blade results
+            blades = image_result.get('blades', [])
+            for blade in blades:
+                blade_result = LeafPositionResult(
+                    test_id=test.id,
+                    image_number=image_idx,
+                    filename=filename,
+                    blade_pair=blade.get('pair'),
+                    position_u_px=blade.get('position_u_px'),
+                    v_sup_px=blade.get('v_sup_px'),
+                    v_inf_px=blade.get('v_inf_px'),
+                    distance_sup_mm=blade.get('distance_sup_mm'),
+                    distance_inf_mm=blade.get('distance_inf_mm'),
+                    length_mm=blade.get('length_mm'),
+                    field_size_mm=blade.get('field_size_mm'),
+                    is_valid=blade.get('is_valid', 'UNKNOWN'),
+                    status_message=blade.get('status_message')
+                )
+                db.add(blade_result)
+        
+        db.commit()
+        logger.info(f"✓ Saved Leaf Position test to database (ID: {test.id})")
+        return test.id
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving Leaf Position test to database: {e}")
         raise
     finally:
         db.close()

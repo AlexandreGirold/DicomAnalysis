@@ -7,6 +7,7 @@ from .niveau_helium import NiveauHeliumTest, test_helium_level
 from .PIQT import PIQTTest, test_piqt
 from .MVIC import MVICChampTest, test_mvic
 from .MVIC_fente import MVICFenteTest, test_mvic_fente_v2
+from .leaf_position import LeafPositionTest, test_leaf_position
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,6 +28,12 @@ WEEKLY_TESTS = {
         'class': MLCLeafJawTest,
         'function': test_mlc_leaf_jaw,
         'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
+        'category': 'weekly'
+    },
+    'leaf_position': {
+        'class': LeafPositionTest,
+        'function': test_leaf_position,
+        'description': 'Détection automatique des positions et longueurs des lames MLC',
         'category': 'weekly'
     },
     'mvic': {

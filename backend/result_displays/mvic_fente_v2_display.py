@@ -1,6 +1,6 @@
 """
-MVIC Fente V2 Result Display
-Retrieve and format MVIC Fente V2 test results from database
+MVIC Fente Result Display
+Retrieve and format MVIC Fente test results from database
 """
 import sys
 import os
@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 def display_mvic_fente_v2_result(test_id: int) -> Optional[Dict]:
     """
-    Retrieve and format MVIC Fente V2 test result from database
+    Retrieve and format MVIC Fente test result from database
     
     Args:
-        test_id: Database ID of the MVIC Fente V2 test
+        test_id: Database ID of the MVIC Fente test
         
     Returns:
         dict: Formatted test result with slit analysis

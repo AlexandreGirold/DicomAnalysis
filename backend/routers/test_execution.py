@@ -9,9 +9,29 @@ import os
 import shutil
 import logging
 import traceback
+import database_helpers
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def parse_test_date(date_str: str) -> datetime:
+    """
+    Parse test date string, preserving current time if only date is provided
+    
+    Args:
+        date_str: Date string in ISO format or YYYY-MM-DD format
+        
+    Returns:
+        datetime: Parsed datetime with current time if only date provided
+    """
+    try:
+        return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+    except ValueError:
+        # If only date provided (YYYY-MM-DD), use current time
+        date_only = datetime.strptime(date_str, '%Y-%m-%d').date()
+        return datetime.combine(date_only, datetime.now().time())
+
 
 # Import basic tests functionality
 try:
@@ -491,14 +511,11 @@ async def execute_mlc_leaf_jaw(request: Request):
         if not operator:
             raise HTTPException(status_code=400, detail="operator is required")
         
-        # Extract test date
+        # Parse test date
         test_date = None
-        test_date_str = form.get("test_date")
+        test_date_str = form.get('test_date')
         if test_date_str:
-            try:
-                test_date = datetime.fromisoformat(test_date_str.replace('Z', '+00:00'))
-            except ValueError:
-                test_date = datetime.strptime(test_date_str, '%Y-%m-%d')
+            test_date = parse_test_date(test_date_str)
         
         # Extract DICOM files (multiple files sent with same field name 'dicom_files')
         dicom_files = []
@@ -568,10 +585,10 @@ async def execute_mlc_leaf_jaw(request: Request):
 @router.post("/execute/mvic")
 async def execute_mvic(request: Request):
     """
-    Execute MVIC (MV Imaging Check) test with 5 DICOM files upload
+    Execute MVIC-Champ (MV Imaging Check) test with 5 DICOM files upload
     Validates field size and shape with automatic detection
     """
-    logger.info("[TEST-EXECUTION] Executing MVIC test")
+    logger.info("[TEST-EXECUTION] Executing MVIC-Champ test")
     
     file_paths = []
     
@@ -668,7 +685,7 @@ async def execute_mvic_fente_v2(request: Request):
     Execute MVIC Fente V2 test with DICOM file upload
     Analyzes MLC slits using edge detection (ImageJ method)
     """
-    logger.info("[TEST-EXECUTION] Executing MVIC Fente V2 test")
+    logger.info("[TEST-EXECUTION] Executing MVIC Fente test")
     
     file_paths = []
     
@@ -748,6 +765,140 @@ async def execute_mvic_fente_v2(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/execute/leaf-position")
+async def execute_leaf_position(request: Request):
+    """
+    Execute Leaf Position test with DICOM file uploads
+    Automatically detects blade positions and field size
+    """
+    logger.info("[LEAF-POSITION] ========== NEW REQUEST ==========")
+    
+    file_paths = []
+    
+    try:
+        # Parse form data
+        form = await request.form()
+        logger.info(f"[LEAF-POSITION] Form keys: {list(form.keys())}")
+        
+        # Extract operator
+        operator = form.get("operator")
+        if not operator:
+            raise HTTPException(status_code=400, detail="operator is required")
+        
+        # Extract test date
+        test_date = None
+        test_date_str = form.get("test_date")
+        if test_date_str:
+            test_date = parse_test_date(test_date_str)
+        
+        # Extract DICOM files (multiple files sent with same field name 'dicom_files' or 'dicom_file')
+        dicom_files = []
+        
+        # Try dicom_files (plural) first
+        if 'dicom_files' in form:
+            files_data = form.getlist('dicom_files')
+            for file in files_data:
+                if hasattr(file, 'filename') and file.filename:
+                    dicom_files.append(file)
+        
+        # Try dicom_file (singular) - this field can contain multiple files when multiple=True
+        if not dicom_files and 'dicom_file' in form:
+            files_data = form.getlist('dicom_file')  # Use getlist to get all files with this name
+            for file in files_data:
+                if hasattr(file, 'filename') and file.filename:
+                    dicom_files.append(file)
+        
+        if not dicom_files:
+            raise HTTPException(status_code=400, detail="At least one DICOM file is required")
+        
+        logger.info(f"[LEAF-POSITION] Processing {len(dicom_files)} files: {[f.filename for f in dicom_files]}")
+        
+        # Save all uploaded files
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        for file in dicom_files:
+            file_path = os.path.join(upload_dir, file.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_paths.append(file_path)
+            logger.info(f"[LEAF-POSITION] Saved DICOM file: {file.filename}")
+        
+        # Execute test on all files AT ONCE (should create ONE test)
+        logger.info(f"[LEAF-POSITION] Executing test with {len(file_paths)} files")
+        result = execute_test(
+            'leaf_position',
+            files=file_paths,
+            operator=operator,
+            test_date=test_date,
+            notes=form.get('notes')
+        )
+        logger.info(f"[LEAF-POSITION] Test execution completed. Result keys: {list(result.keys())}")
+        
+        # Prepare data for database saving
+        # Extract blade results for each image
+        blade_results = []
+        filenames = [os.path.basename(fp) for fp in file_paths]
+        logger.info(f"[LEAF-POSITION] Extracting blade results from {len(filenames)} files")
+        
+        for file_idx, filename in enumerate(filenames, 1):
+            image_blades = []
+            
+            # Extract blade data from results
+            for result_key, result_value in result.get('results', {}).items():
+                # Look for blade results matching this file
+                if result_key.startswith(f'file_{file_idx}_blade_'):
+                    value_data = result_value.get('value', {})
+                    image_blades.append({
+                        'pair': int(result_key.split('_')[-1]),  # Extract blade pair number
+                        'position_u_px': value_data.get('position_u_px'),
+                        'v_sup_px': value_data.get('v_sup_px'),
+                        'v_inf_px': value_data.get('v_inf_px'),
+                        'distance_sup_mm': value_data.get('distance_sup_mm'),
+                        'distance_inf_mm': value_data.get('distance_inf_mm'),
+                        'length_mm': value_data.get('length_mm'),
+                        'field_size_mm': value_data.get('length_mm'),  # Same as length
+                        'is_valid': value_data.get('status', 'UNKNOWN'),
+                        'status_message': result_value.get('details', '')
+                    })
+            
+            blade_results.append({
+                'blades': image_blades
+            })
+        
+        # Add blade results to response for frontend to save
+        result['blade_results'] = blade_results
+        result['filenames'] = [os.path.basename(fp) for fp in file_paths]
+        logger.info(f"[LEAF-POSITION] Added {len(blade_results)} image results to response")
+        
+        # DON'T auto-save - let user click Save button
+        # Instead, save visualizations with a temporary ID and update later
+        
+        # For now, include visualizations in response as base64
+        # The save endpoint will handle saving them to files
+        
+        # Clean up uploaded files
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.info(f"[TEST-EXECUTION] Leaf Position test result: {result['overall_result']}")
+        return JSONResponse(result)
+        
+    except Exception as e:
+        # Clean up uploaded files on error
+        for file_path in file_paths:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+        
+        logger.error(f"[TEST-EXECUTION] Error executing Leaf Position test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/execute/{test_id}")
 async def execute_test_generic(test_id: str, data: dict):
     """
@@ -772,6 +923,17 @@ async def execute_test_generic(test_id: str, data: dict):
         params = dict(data)
         if test_date:
             params['test_date'] = test_date
+        
+        # Map dicom_file/dicom_files to files parameter for file-based tests
+        if 'dicom_file' in params and 'files' not in params:
+            file_value = params.pop('dicom_file')
+            # Convert single file or list of files to files parameter
+            if isinstance(file_value, list):
+                params['files'] = file_value
+            else:
+                params['files'] = [file_value] if file_value else []
+        elif 'dicom_files' in params and 'files' not in params:
+            params['files'] = params.pop('dicom_files')
         
         # Execute test
         result = execute_test(test_id, **params)

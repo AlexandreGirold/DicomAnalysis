@@ -68,7 +68,7 @@ async function handleTestSubmission(e) {
         let isFileUploadTest = false;
         if (window.APP_STATE.currentFormData && window.APP_STATE.currentFormData.file_upload) {
             isFileUploadTest = true;
-        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic' || testId === 'mvic_fente') {
+        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic' || testId === 'mvic_fente' || testId === 'leaf_position') {
             isFileUploadTest = true;
         }
         
@@ -153,6 +153,8 @@ async function handleFileUploadTest(capturedFormData, testId) {
         endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic_fente`;
     } else if (testId === 'mvic_fente_v2') {
         endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic-fente-v2`;
+    } else if (testId === 'leaf_position') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/leaf-position`;
     } else {
         endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/${testId}`;
     }

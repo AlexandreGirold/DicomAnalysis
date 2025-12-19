@@ -1,6 +1,6 @@
 /**
- * MLC/MVIC Test Database Save Functionality
- * Handles saving MLC and MVIC test results to the database
+ * MLC/MVIC-Champ Test Database Save Functionality
+ * Handles saving MLC and MVIC-Champ test results to the database
  */
 
 // Store current test data globally
@@ -216,10 +216,10 @@ function prepareMLCTestData(analysisResult) {
 }
 
 /**
- * Prepare MVIC test data from analysis results
+ * Prepare MVIC-Champ test data from analysis results
  */
 function prepareMVICTestData(analysisResult) {
-    console.log('Preparing MVIC test data:', analysisResult);
+    console.log('Preparing MVIC-Champ test data:', analysisResult);
     
     const mvicData = {
         test_date: analysisResult.test_date || new Date().toISOString(),
@@ -368,7 +368,7 @@ function enableMLCTestSave(analysisResult, testType = null) {
     if (!testType || testType === 'mlc') {
         console.log('⚠️  Still not detected, checking result structure...');
         if (analysisResult.visualizations && Array.isArray(analysisResult.visualizations)) {
-            testType = 'mvic';  // MVIC tests have visualizations
+            testType = 'mvic';  // MVIC-Champ tests have visualizations
             console.log('✅ Detected MVIC from visualizations array');
         } else if (analysisResult.file_results && Array.isArray(analysisResult.file_results)) {
             // Check analysis types in file_results
@@ -415,6 +415,15 @@ function enableMLCTestSave(analysisResult, testType = null) {
         testData.visualizations = analysisResult.visualizations || [];
         // Include file_results with per-file metadata
         testData.file_results = analysisResult.file_results || [];
+    } else if (testType === 'leaf_position') {
+        // For Leaf Position, use generic preparation
+        testData = prepareGenericTestData(analysisResult);
+        // Include visualizations for saving as image files
+        testData.visualizations = analysisResult.visualizations || [];
+        // Include blade_results for database storage
+        testData.blade_results = analysisResult.blade_results || [];
+        // Include file_results with per-file metadata
+        testData.file_results = analysisResult.file_results || [];
     } else {
         // For all other tests, use generic preparation
         testData = prepareGenericTestData(analysisResult);
@@ -442,6 +451,7 @@ const TEST_SAVE_ENDPOINTS = {
     'mvic_fente': '/mvic-fente-v2-sessions',
     'mvic_fente_v2': '/mvic-fente-v2-sessions',
     'mlc_leaf_jaw': '/mlc-leaf-jaw-sessions',
+    'leaf_position': '/leaf-position-sessions',
     'niveau_helium': '/niveau-helium-sessions',
     'piqt': '/piqt-sessions',
     
@@ -573,7 +583,7 @@ async function saveMLCTestToDatabase() {
         const testTypeNames = {
             'mvic': 'MVIC',
             'mvic_fente': 'MVIC Fente',
-            'mvic_fente_v2': 'MVIC Fente V2',
+            'mvic_fente_v2': 'MVIC Fente',
             'mlc_leaf_jaw': 'MLC Leaf Jaw',
             'niveau_helium': 'Niveau Helium',
             'piqt': 'PIQT',

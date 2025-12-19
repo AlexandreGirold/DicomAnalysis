@@ -440,28 +440,40 @@ async def analyze_dicom(file: UploadFile = File(...)):
         except:
             pass
 
-@app.get("/visualization/{filename}")
+@app.get("/visualization/{filename:path}")
 async def get_visualization(filename: str):
     """
     Retrieve the generated visualization image
+    Supports paths like: visualizations/leaf_position/test_123_img_1.png
     """
     logger.info(f"[VISUALIZATION] Requested file: {filename}")
     
-    # Check in uploads directory first
+    # Check in frontend/visualizations directory (new structure)
+    frontend_viz_path = Path(__file__).parent.parent / 'frontend' / filename
+    logger.info(f"[VISUALIZATION] Looking for file at: {frontend_viz_path.absolute()}")
+    
+    if frontend_viz_path.exists():
+        logger.info(f"[VISUALIZATION] Returning file from frontend: {filename}")
+        return FileResponse(frontend_viz_path, media_type="image/png")
+    
+    # Fallback to uploads directory (legacy)
     file_path = UPLOAD_DIR / filename
-    logger.info(f"[VISUALIZATION] Looking for file at: {file_path.absolute()}")
+    logger.info(f"[VISUALIZATION] Trying uploads directory: {file_path.absolute()}")
     
-    # Fallback to current directory if not in uploads
-    if not file_path.exists():
-        file_path = Path(filename)
-        logger.info(f"[VISUALIZATION] Trying alternate location: {file_path.absolute()}")
+    if file_path.exists():
+        logger.info(f"[VISUALIZATION] Returning file from uploads: {filename}")
+        return FileResponse(file_path, media_type="image/png")
     
-    if not file_path.exists():
-        logger.warning(f"[VISUALIZATION] File not found: {filename}")
-        raise HTTPException(status_code=404, detail=f"Visualization not found: {filename}")
+    # Last fallback to current directory
+    file_path = Path(filename)
+    logger.info(f"[VISUALIZATION] Trying current directory: {file_path.absolute()}")
     
-    logger.info(f"[VISUALIZATION] Returning file: {filename}")
-    return FileResponse(file_path, media_type="image/png")
+    if file_path.exists():
+        logger.info(f"[VISUALIZATION] Returning file: {filename}")
+        return FileResponse(file_path, media_type="image/png")
+    
+    logger.warning(f"[VISUALIZATION] File not found: {filename}")
+    raise HTTPException(status_code=404, detail=f"Visualization not found: {filename}")
 
 
 @app.get("/tests")
@@ -823,12 +835,12 @@ async def generate_mlc_trend_report(start_date: str = None, end_date: str = None
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== MVIC TEST SESSION ENDPOINTS =====
+# ===== MVIC-CHAMP TEST SESSION ENDPOINTS =====
 
 @app.post("/mvic-test-sessions")
 async def save_mvic_test_session(data: dict):
     """
-    Save MVIC test session with all 5 images
+    Save MVIC-Champ test session with all 5 images
     
     Expected data structure:
     {
@@ -843,7 +855,7 @@ async def save_mvic_test_session(data: dict):
         "overall_result": "PASS"
     }
     """
-    logger.info("[MVIC-SESSION] Saving MVIC test session")
+    logger.info("[MVIC-SESSION] Saving MVIC-Champ test session")
     try:
         # Parse test date
         test_date = None
@@ -898,7 +910,7 @@ async def save_mvic_test_session(data: dict):
         return JSONResponse({
             'success': True,
             'test_id': test_id,
-            'message': 'MVIC test session saved successfully'
+            'message': 'MVIC-Champ test session saved successfully'
         })
         
     except ValueError as e:
@@ -918,7 +930,7 @@ async def get_mvic_test_sessions(
     end_date: str = None
 ):
     """
-    Get all MVIC test sessions with optional date filtering
+    Get all MVIC-Champ test sessions with optional date filtering
     """
     logger.info(f"[MVIC-SESSIONS] Getting tests (limit={limit}, start_date={start_date}, end_date={end_date})")
     try:
@@ -960,7 +972,7 @@ async def get_mvic_test_sessions(
 @app.get("/mvic-test-sessions/{test_id}")
 async def get_mvic_test_session(test_id: int):
     """
-    Get a specific MVIC test session by ID
+    Get a specific MVIC-Champ test session by ID
     """
     logger.info(f"[MVIC-SESSION] Getting test ID: {test_id}")
     try:
@@ -1008,7 +1020,7 @@ async def get_mvic_test_session(test_id: int):
 @app.delete("/mvic-test-sessions/{test_id}")
 async def delete_mvic_test_session(test_id: int):
     """
-    Delete a specific MVIC test session
+    Delete a specific MVIC-Champ test session
     """
     logger.info(f"[MVIC-SESSION] Deleting test ID: {test_id}")
     try:
@@ -1030,7 +1042,7 @@ async def delete_mvic_test_session(test_id: int):
         db_session.close()
         
         logger.info(f"[MVIC-SESSION] Successfully deleted test {test_id}")
-        return JSONResponse({'message': 'MVIC test session deleted successfully'})
+        return JSONResponse({'message': 'MVIC-Champ test session deleted successfully'})
     except HTTPException:
         raise
     except Exception as e:

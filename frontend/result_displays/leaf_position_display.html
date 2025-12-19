@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Affichage Résultat Test MVIC Fente</title>
+    <title>Affichage Résultat Test Position des Lames</title>
     <link rel="stylesheet" href="../styles.css">
     <style>
         .result-container {
@@ -73,33 +73,6 @@
             border-bottom: 1px solid #dee2e6;
             padding-bottom: 10px;
             margin-bottom: 15px;
-        }
-        
-        .slit-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        
-        .slit-table th {
-            background: #007bff;
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-        }
-        
-        .slit-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .slit-table tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .slit-table tr:nth-child(even) {
-            background: #f9f9f9;
         }
         
         .loading {
@@ -184,7 +157,6 @@
             color: #666;
         }
         
-        /* Lightbox for full-size image viewing */
         .lightbox {
             display: none;
             position: fixed;
@@ -215,11 +187,42 @@
             font-weight: bold;
             cursor: pointer;
         }
+        
+        .blade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .blade-table th {
+            background: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .blade-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .blade-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .blade-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-out { color: #fd7e14; font-weight: bold; }
+        .status-closed { color: #6c757d; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Visualisation Résultats Test MVIC Fente</h1>
+        <h1>Visualisation Résultats Test Position des Lames</h1>
         
         <div class="test-selector">
             <label for="testSelect">Sélectionner un test à afficher :</label>
@@ -238,14 +241,14 @@
         <span class="lightbox-close">&times;</span>
         <img id="lightboxImage" src="" alt="Full size visualization">
     </div>
-
+    
     <script>
         const API_BASE_URL = 'http://localhost:8000';
         
         // Load available tests on page load
         async function loadAvailableTests() {
             try {
-                const response = await fetch(`${API_BASE_URL}/display/mvic-fente-v2?limit=50`);
+                const response = await fetch(`${API_BASE_URL}/leaf-position-sessions?limit=50`);
                 const data = await response.json();
                 
                 const select = document.getElementById('testSelect');
@@ -281,15 +284,13 @@
             container.innerHTML = '<div class="loading">Chargement du résultat...</div>';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/display/mvic-fente-v2/${testId}`);
+                const response = await fetch(`${API_BASE_URL}/leaf-position-sessions/${testId}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                console.log('🔍 API Response Data:', data);
-                console.log('📸 Visualization Paths:', data.visualization_paths);
                 container.innerHTML = renderTestResult(data);
                 
             } catch (error) {
@@ -305,14 +306,14 @@
             let html = `
                 <div class="result-container">
                     <div class="result-header">
-                        <h1>${data.test_name}</h1>
+                        <h1>📏 Test Position des Lames</h1>
                         <span class="result-badge ${data.overall_result}">${data.overall_result}</span>
                     </div>
                     
                     <div class="result-meta">
                         <div class="meta-item">
                             <label>ID Test</label>
-                            <div class="value">#${data.test_id}</div>
+                            <div class="value">#${data.id}</div>
                         </div>
                         <div class="meta-item">
                             <label>Date du Test</label>
@@ -330,28 +331,28 @@
                     
                     ${data.notes ? `<div class="meta-item"><label>Commentaires</label><div class="value">${data.notes}</div></div>` : ''}
                     
-                    ${data.filenames.length > 0 ? `
+                    ${data.filenames ? `
                         <div class="meta-item">
                             <label>Fichiers</label>
-                            <div class="value">${data.filenames.join(', ')}</div>
+                            <div class="value">${data.filenames.split(',').join(', ')}</div>
                         </div>
                     ` : ''}
             `;
             
             // Add visualizations if available
-            if (data.visualization_paths && data.visualization_paths.length > 0) {
+            if (data.visualization_paths) {
+                const vizPaths = JSON.parse(data.visualization_paths);
                 html += `
                     <div class="summary-section visualizations-section">
-                        <h2>Visualisations du Test (${data.visualization_paths.length})</h2>
+                        <h2>Visualisations du Test (${vizPaths.length})</h2>
                         <div class="visualization-gallery">
                 `;
                 
-                data.visualization_paths.forEach((path, index) => {
-                    // Extract filename for label
-                    const filename = path.split('/').pop();
+                vizPaths.forEach((path, index) => {
+                    const fullPath = `/static/${path}`;
                     html += `
                         <div class="visualization-item">
-                            <img src="/static/${path}" alt="Visualization ${index + 1}" onclick="openLightbox('/static/${path}')" />
+                            <img src="${fullPath}" alt="Visualization ${index + 1}" onclick="openLightbox('${fullPath}')" />
                             <div class="visualization-label">Image ${index + 1}</div>
                         </div>
                     `;
@@ -359,6 +360,57 @@
                 
                 html += `
                         </div>
+                    </div>
+                `;
+            }
+            
+            // Add blade results table
+            if (data.blade_results && data.blade_results.length > 0) {
+                html += `
+                    <div class="summary-section">
+                        <h2>Détails des Lames (${data.blade_results.length})</h2>
+                        <table class="blade-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Paire de Lames</th>
+                                    <th>U (px)</th>
+                                    <th>V Haut (px)</th>
+                                    <th>V Bas (px)</th>
+                                    <th>Dist Haut (mm)</th>
+                                    <th>Dist Bas (mm)</th>
+                                    <th>Longueur (mm)</th>
+                                    <th>Taille Champ (mm)</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.blade_results.forEach(blade => {
+                    const statusClass = blade.is_valid === 'OK' ? 'status-ok' : 
+                                       blade.is_valid === 'OUT_OF_TOLERANCE' ? 'status-out' : 
+                                       'status-closed';
+                    
+                    html += `
+                        <tr>
+                            <td>${blade.image_number || 'N/A'}</td>
+                            <td>${blade.blade_pair || 'N/A'}</td>
+                            <td>${fmt(blade.position_u_px)}</td>
+                            <td>${fmt(blade.v_sup_px)}</td>
+                            <td>${fmt(blade.v_inf_px)}</td>
+                            <td>${fmt(blade.distance_sup_mm)}</td>
+                            <td>${fmt(blade.distance_inf_mm)}</td>
+                            <td>${fmt(blade.length_mm)}</td>
+                            <td>${fmt(blade.field_size_mm)}</td>
+                            <td class="${statusClass}">${blade.is_valid || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
                     </div>
                 `;
             }

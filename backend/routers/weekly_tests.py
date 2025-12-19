@@ -311,3 +311,112 @@ async def delete_piqt_session(test_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# LEAF POSITION (WEEKLY)
+# ============================================================================
+
+@router.post("/leaf-position-sessions")
+async def save_leaf_position_session(data: dict):
+    """Save Leaf Position test session"""
+    logger.info("[LEAF-POSITION] Saving test session")
+    logger.info(f"[LEAF-POSITION] Data keys: {list(data.keys())}")
+    try:
+        test_date = parse_test_date(data.get('test_date'))
+        if 'operator' not in data or not data['operator']:
+            raise ValueError("operator is required")
+        
+        # Accept either 'results' or 'blade_results' for backwards compatibility
+        blade_data = data.get('results') or data.get('blade_results')
+        if not blade_data:
+            raise ValueError("results or blade_results is required")
+        
+        # Save test to database first
+        test_id = database_helpers.save_leaf_position_to_database(
+            operator=data['operator'],
+            test_date=test_date,
+            overall_result=data.get('overall_result', 'PASS'),
+            results=blade_data,
+            notes=data.get('notes'),
+            filenames=data.get('filenames', []),
+            file_results=data.get('file_results'),
+            visualization_paths=None  # Will update after saving visualizations
+        )
+        
+        logger.info(f"[LEAF-POSITION] Saved test with ID: {test_id}")
+        
+        # Save visualizations if provided
+        if 'visualizations' in data and data['visualizations']:
+            try:
+                import sys
+                import os
+                sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'services'))
+                from visualization_storage import save_multiple_visualizations
+                
+                logger.info(f"[LEAF-POSITION] Saving {len(data['visualizations'])} visualizations")
+                saved_viz = save_multiple_visualizations(
+                    visualizations=data['visualizations'],
+                    test_type='leaf_position',
+                    test_id=test_id
+                )
+                
+                # Extract file paths and update database
+                visualization_paths = [viz.get('file_path') for viz in saved_viz if viz.get('file_path')]
+                if visualization_paths:
+                    database_helpers.update_visualization_paths(
+                        test_id=test_id,
+                        test_type='leaf_position',
+                        paths=visualization_paths
+                    )
+                    logger.info(f"[LEAF-POSITION] Saved {len(visualization_paths)} visualization files")
+            except Exception as viz_error:
+                logger.error(f"[LEAF-POSITION] Failed to save visualizations: {viz_error}", exc_info=True)
+        
+        return JSONResponse({'success': True, 'test_id': test_id, 'message': 'Leaf Position test saved successfully'})
+    except ValueError as e:
+        logger.error(f"[LEAF-POSITION] Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[LEAF-POSITION] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/leaf-position-sessions")
+async def get_leaf_position_sessions(limit: int = 100, offset: int = 0, start_date: str = None, end_date: str = None):
+    """Get all Leaf Position test sessions with blade results"""
+    try:
+        tests = db.get_all_leaf_position_tests(limit=limit, offset=offset, start_date=start_date, end_date=end_date)
+        return JSONResponse({'tests': tests, 'count': len(tests)})
+    except Exception as e:
+        logger.error(f"[LEAF-POSITION] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/leaf-position-sessions/{test_id}")
+async def get_leaf_position_session(test_id: int):
+    """Get a specific Leaf Position test session with all blade results"""
+    try:
+        test = db.get_leaf_position_test_by_id(test_id)
+        if not test:
+            raise HTTPException(status_code=404, detail="Test not found")
+        return JSONResponse(test)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/leaf-position-sessions/{test_id}")
+async def delete_leaf_position_session(test_id: int):
+    """Delete a Leaf Position test session and all associated blade results"""
+    try:
+        success = db.delete_leaf_position_test(test_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Test not found")
+        return JSONResponse({'message': 'Test deleted successfully'})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

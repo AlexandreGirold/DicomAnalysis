@@ -18,7 +18,8 @@ const TEST_DISPLAY_NAMES = {
     'niveau_helium': 'Niveau Helium',
     'mlc_leaf_jaw': 'MLC Leaf & Jaw',
     'mvic': 'MVIC',
-    'mvic_fente_v2': 'MVIC Fente V2',
+    'mvic_fente_v2': 'MVIC Fente',
+    'leaf_position': 'Leaf Position',
     'piqt': 'PIQT',
     'position_table_v2': 'Position Table V2',
     'alignement_laser': 'Alignement Laser',
@@ -33,6 +34,7 @@ const TEST_FREQUENCY = {
     'mlc_leaf_jaw': 'weekly',
     'mvic': 'weekly',
     'mvic_fente_v2': 'weekly',
+    'leaf_position': 'weekly',
     'piqt': 'weekly',
     'position_table_v2': 'monthly',
     'alignement_laser': 'monthly',
@@ -114,6 +116,7 @@ async function loadAllTests() {
             { endpoint: 'mlc-test-sessions', type: 'mlc_leaf_jaw' },
             { endpoint: 'mvic-test-sessions', type: 'mvic' },
             { endpoint: 'mvic-fente-v2-sessions', type: 'mvic_fente_v2' },
+            { endpoint: 'leaf-position-sessions', type: 'leaf_position' },
             { endpoint: 'piqt-sessions', type: 'piqt' },
             { endpoint: 'position-table-sessions', type: 'position_table_v2' },
             { endpoint: 'alignement-laser-sessions', type: 'alignement_laser' },
@@ -293,6 +296,7 @@ async function viewTestDetail(testId, testType) {
             'mlc_leaf_jaw': 'mlc-leaf-jaw-sessions',
             'mvic': 'mvic-test-sessions',
             'mvic_fente_v2': 'mvic-fente-v2-sessions',
+            'leaf_position': 'leaf-position-sessions',
             'piqt': 'piqt-sessions',
             'position_table': 'position-table-sessions',
             'alignement_laser': 'alignement-laser-sessions',
@@ -469,6 +473,49 @@ function displayTestDetail(test) {
         // Hide visualizations and results table for MVIC Fente tests
         document.querySelector('.visualization-section').style.display = 'none';
         document.querySelector('.results-table-section').style.display = 'none';
+    } else if (test.test_type === 'leaf_position') {
+        // Leaf Position test display
+        const bladeResults = test.blade_results || [];
+        const totalBlades = bladeResults.length;
+        const okBlades = bladeResults.filter(b => b.is_valid === 'OK').length;
+        const outOfTolerance = bladeResults.filter(b => b.is_valid === 'OUT_OF_TOLERANCE').length;
+        const closedBlades = bladeResults.filter(b => b.is_valid === 'CLOSED').length;
+        
+        summaryCard.innerHTML = `
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats Leaf Position</h3>
+            <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Total Lames:</span>
+                    <span class="value" style="font-size: 1em !important;">${totalBlades}</span>
+                </div>
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">OK:</span>
+                    <span class="value" style="font-size: 1em !important; color: green;">${okBlades}</span>
+                </div>
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Hors tolérance:</span>
+                    <span class="value" style="font-size: 1em !important; color: orange;">${outOfTolerance}</span>
+                </div>
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Fermées:</span>
+                    <span class="value" style="font-size: 1em !important; color: gray;">${closedBlades}</span>
+                </div>
+                <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
+                    <span class="label">Résultat:</span>
+                    <span class="value" style="font-size: 1em !important;"><strong>${test.overall_result || 'N/A'}</strong></span>
+                </div>
+            </div>
+            ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
+            <div style="margin-top: 10px; font-size: 0.85em;">
+                <a href="result_displays/leaf_position_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
+                    📊 View Full Leaf Position Report →
+                </a>
+            </div>
+        `;
+        
+        // Hide visualizations and results table - show in full report instead
+        document.querySelector('.visualization-section').style.display = 'none';
+        document.querySelector('.results-table-section').style.display = 'none';
     } else if (test.test_type === 'niveau_helium') {
         // Niveau Helium test display
         summaryCard.innerHTML = `
@@ -591,6 +638,7 @@ async function deleteTest() {
             'mlc_leaf_jaw': 'mlc-test-sessions',
             'mvic': 'mvic-test-sessions',
             'mvic_fente_v2': 'mvic-fente-v2-sessions',
+            'leaf_position': 'leaf-position-sessions',
             'piqt': 'piqt-sessions',
             'position_table_v2': 'position-table-sessions',
             'alignement_laser': 'alignement-laser-sessions',
