@@ -835,41 +835,14 @@ async def execute_leaf_position(request: Request):
         )
         logger.info(f"[LEAF-POSITION] Test execution completed. Result keys: {list(result.keys())}")
         
-        # Prepare data for database saving
-        # Extract blade results for each image
-        blade_results = []
-        filenames = [os.path.basename(fp) for fp in file_paths]
-        logger.info(f"[LEAF-POSITION] Extracting blade results from {len(filenames)} files")
+        # The service already provides blade_results in the correct format
+        # Just add filenames for reference
+        if 'blade_results' not in result:
+            logger.warning("[LEAF-POSITION] No blade_results in service output!")
+            result['blade_results'] = []
         
-        for file_idx, filename in enumerate(filenames, 1):
-            image_blades = []
-            
-            # Extract blade data from results
-            for result_key, result_value in result.get('results', {}).items():
-                # Look for blade results matching this file
-                if result_key.startswith(f'file_{file_idx}_blade_'):
-                    value_data = result_value.get('value', {})
-                    image_blades.append({
-                        'pair': int(result_key.split('_')[-1]),  # Extract blade pair number
-                        'position_u_px': value_data.get('position_u_px'),
-                        'v_sup_px': value_data.get('v_sup_px'),
-                        'v_inf_px': value_data.get('v_inf_px'),
-                        'distance_sup_mm': value_data.get('distance_sup_mm'),
-                        'distance_inf_mm': value_data.get('distance_inf_mm'),
-                        'length_mm': value_data.get('length_mm'),
-                        'field_size_mm': value_data.get('length_mm'),  # Same as length
-                        'is_valid': value_data.get('status', 'UNKNOWN'),
-                        'status_message': result_value.get('details', '')
-                    })
-            
-            blade_results.append({
-                'blades': image_blades
-            })
-        
-        # Add blade results to response for frontend to save
-        result['blade_results'] = blade_results
         result['filenames'] = [os.path.basename(fp) for fp in file_paths]
-        logger.info(f"[LEAF-POSITION] Added {len(blade_results)} image results to response")
+        logger.info(f"[LEAF-POSITION] Service returned {len(result.get('blade_results', []))} blade result entries")
         
         # DON'T auto-save - let user click Save button
         # Instead, save visualizations with a temporary ID and update later

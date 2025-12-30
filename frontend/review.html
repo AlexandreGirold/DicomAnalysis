@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLC Blade Analysis - Review</title>
+    <title>Analyse Position des Lames MLC - Revue</title>
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         .frequency-badge {
@@ -101,43 +101,44 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔬 MLC Blade Position Analysis</h1>
+            <h1>🔬 Analyse Position des Lames MLC</h1>
             <nav>
-                <a href="/" class="nav-link">Analysis</a>
-                <a href="/static/review.html" class="nav-link active">Review</a>
+                <a href="/" class="nav-link">Tests</a>
+                <a href="/static/review.html" class="nav-link active">Revue</a>
+                <a href="/static/trends.html" class="nav-link">Tendances</a>
                 <a href="/static/config.html" class="nav-link">Config</a>
             </nav>
         </header>
 
         <main>
             <section class="filter-section">
-                <h2>Review Historical Tests</h2>
+                <h2>Consulter les Tests Historiques</h2>
                 
                 <div class="filter-card">
-                    <h3>🔍 Filter Tests</h3>
-                    <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <h3>🔍 Filtrer les Tests</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 15px; align-items: end;">
                         <!-- Test Type Selection -->
                         <div class="filter-item">
-                            <label for="testTypeFilter">Test Type:</label>
+                            <label for="testTypeFilter">Type de Test :</label>
                             <select id="testTypeFilter" class="form-select">
-                                <option value="">All Tests</option>
-                                <option value="daily">Daily Tests</option>
-                                <option value="weekly">Weekly Tests</option>
-                                <option value="monthly">Monthly Tests</option>
+                                <option value="">Tous les Tests</option>
+                                <option value="daily">Tests Quotidiens</option>
+                                <option value="weekly">Tests Hebdomadaires</option>
+                                <option value="monthly">Tests Mensuels</option>
                             </select>
                         </div>
                         
                         <!-- Specific Test Selection -->
                         <div class="filter-item">
-                            <label for="specificTestFilter">Specific Test:</label>
+                            <label for="specificTestFilter">Test Spécifique :</label>
                             <select id="specificTestFilter" class="form-select">
-                                <option value="">All</option>
+                                <option value="">Tous</option>
                                 <!-- Daily -->
-                                <optgroup label="Daily Tests">
+                                <optgroup label="Tests Quotidiens">
                                     <option value="safety_systems">Safety Systems</option>
                                 </optgroup>
                                 <!-- Weekly -->
-                                <optgroup label="Weekly Tests">
+                                <optgroup label="Tests Hebdomadaires">
                                     <option value="niveau_helium">Niveau Helium</option>
                                     <option value="mlc_leaf_jaw">MLC Leaf & Jaw</option>
                                     <option value="mvic">MVIC</option>
@@ -145,7 +146,7 @@
                                     <option value="piqt">PIQT</option>
                                 </optgroup>
                                 <!-- Monthly -->
-                                <optgroup label="Monthly Tests">
+                                <optgroup label="Tests Mensuels">
                                     <option value="position_table_v2">Position Table V2</option>
                                     <option value="alignement_laser">Alignement Laser</option>
                                     <option value="quasar">Quasar</option>
@@ -156,40 +157,40 @@
                         
                         <!-- Date Range -->
                         <div class="filter-item">
-                            <label for="startDate">Start Date:</label>
+                            <label for="startDate">Date de Début :</label>
                             <input type="date" id="startDate" class="form-input">
                         </div>
                         <div class="filter-item">
-                            <label for="endDate">End Date:</label>
+                            <label for="endDate">Date de Fin :</label>
                             <input type="date" id="endDate" class="form-input">
                         </div>
                         
                         <!-- Action Buttons -->
-                        <div class="filter-item" style="display: flex; gap: 10px; align-items: flex-end;">
-                            <button id="applyFilterBtn" class="btn btn-primary" style="flex: 1;">
-                                🔍 Apply Filter
+                        <div style="display: flex; gap: 10px;">
+                            <button id="applyFilterBtn" class="btn btn-primary" style="width: 50px; height: 42px; display: flex; align-items: center; justify-content: center; padding: 0;" title="Appliquer le Filtre">
+                                🔍
                             </button>
-                            <button id="clearFilterBtn" class="btn btn-secondary" style="flex: 1;">
-                                🗑️ Clear
+                            <button id="clearFilterBtn" class="btn btn-secondary" style="width: 50px; height: 42px; display: flex; align-items: center; justify-content: center; padding: 0;" title="Effacer">
+                                🗑️
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div class="stats-card">
-                    <h3>📊 Current View Statistics</h3>
+                    <h3>📊 Statistiques de la Vue Actuelle</h3>
                     <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
                         <div class="stat-item">
-                            <span class="label">Tests Shown:</span>
+                            <span class="label">Tests Affichés :</span>
                             <span id="shownTests" class="value">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="label">Test Type:</span>
-                            <span id="currentTestType" class="value">All</span>
+                            <span class="label">Type de Test :</span>
+                            <span id="currentTestType" class="value">Tous</span>
                         </div>
                         <div class="stat-item">
-                            <span class="label">Date Range:</span>
-                            <span id="currentDateRange" class="value">All dates</span>
+                            <span class="label">Période :</span>
+                            <span id="currentDateRange" class="value">Toutes les dates</span>
                         </div>
                     </div>
                 </div>
@@ -197,97 +198,97 @@
 
             <section id="loadingSection" class="loading-section" style="display: none;">
                 <div class="spinner"></div>
-                <p>Loading tests...</p>
+                <p>Chargement des tests...</p>
             </section>
 
             <section class="tests-section">
-                <h3>Test History</h3>
+                <h3>Historique des Tests</h3>
                 <div id="testsContainer" class="tests-list-compact">
-                    <p class="placeholder-text">No tests found. Run some analyses first!</p>
+                    <p class="placeholder-text">Aucun test trouvé. Lancez d'abord des analyses !</p>
                 </div>
             </section>
 
             <section id="testDetailSection" class="test-detail-section" style="display: none;">
                 <div class="detail-header">
-                    <h2>Test Details</h2>
-                    <button class="btn btn-secondary" onclick="closeTestDetail()">✖ Close</button>
+                    <h2>Détails du Test</h2>
+                    <button class="btn btn-secondary" onclick="closeTestDetail()">✖ Fermer</button>
                 </div>
 
                 <div class="detail-info">
                     <div class="info-grid">
                         <div class="info-item">
-                            <span class="label">Test ID:</span>
+                            <span class="label">ID du Test :</span>
                             <span id="detailTestId" class="value">-</span>
                         </div>
                         <div class="info-item">
-                            <span class="label">Filename:</span>
+                            <span class="label">Nom du Fichier :</span>
                             <span id="detailFilename" class="value">-</span>
                         </div>
                         <div class="info-item">
-                            <span class="label">Test Date:</span>
+                            <span class="label">Date du Test :</span>
                             <span id="detailDate" class="value">-</span>
                         </div>
                         <div class="info-item">
-                            <span class="label">Upload Date:</span>
+                            <span class="label">Date de Téléversement :</span>
                             <span id="detailUploadDate" class="value">-</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="summary-card">
-                    <h3>Summary</h3>
+                    <h3>Résumé</h3>
                     <div class="summary-grid">
                         <div class="summary-item">
-                            <span class="label">Total Blades:</span>
+                            <span class="label">Total Lames :</span>
                             <span id="detailTotalBlades" class="value">-</span>
                         </div>
                         <div class="summary-item success">
-                            <span class="label">OK:</span>
+                            <span class="label">OK :</span>
                             <span id="detailOkBlades" class="value">-</span>
                         </div>
                         <div class="summary-item warning">
-                            <span class="label">Out of Tolerance:</span>
+                            <span class="label">Hors Tolérance :</span>
                             <span id="detailOutOfTolerance" class="value">-</span>
                         </div>
                         <div class="summary-item info">
-                            <span class="label">Closed:</span>
+                            <span class="label">Fermées :</span>
                             <span id="detailClosedBlades" class="value">-</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="visualization-section">
-                    <h3>Visualizations</h3>
+                    <h3>Visualisations</h3>
                     <div id="detailVisualizationDropdown">
                         <select id="detailVizSelect" class="form-select">
-                            <option value="">-- No visualizations available --</option>
+                            <option value="">-- Aucune visualisation disponible --</option>
                         </select>
                     </div>
                     <div id="detailVisualizationDisplay" class="visualization-display">
-                        <p class="placeholder-text">No visualizations available for this test</p>
+                        <p class="placeholder-text">Aucune visualisation disponible pour ce test</p>
                     </div>
                 </div>
 
                 <div class="results-table-section">
-                    <h3>Blade Measurements</h3>
+                    <h3>Mesures des Lames</h3>
                     <div class="table-controls">
-                        <input type="text" id="detailSearchInput" class="search-input" placeholder="Search blade pair...">
+                        <input type="text" id="detailSearchInput" class="search-input" placeholder="Rechercher paire de lames...">
                         <select id="detailStatusFilter" class="form-select">
-                            <option value="">All Statuses</option>
+                            <option value="">Tous les Statuts</option>
                             <option value="OK">OK</option>
-                            <option value="OUT_OF_TOLERANCE">Out of Tolerance</option>
-                            <option value="CLOSED">Closed</option>
+                            <option value="OUT_OF_TOLERANCE">Hors Tolérance</option>
+                            <option value="CLOSED">Fermée</option>
                         </select>
                     </div>
                     <div class="table-wrapper">
                         <table id="detailResultsTable">
                             <thead>
                                 <tr>
-                                    <th>Blade Pair</th>
+                                    <th>Paire de Lames</th>
                                     <th>Distance Sup (mm)</th>
                                     <th>Distance Inf (mm)</th>
-                                    <th>Field Size (mm)</th>
-                                    <th>Status</th>
+                                    <th>Taille de Champ (mm)</th>
+                                    <th>Statut</th>
                                 </tr>
                             </thead>
                             <tbody id="detailResultsTableBody">
@@ -299,17 +300,17 @@
 
                 <div class="action-buttons">
                     <button id="downloadReportBtn" class="btn btn-primary">
-                        📄 Download PDF Report
+                        📄 Télécharger le Rapport PDF
                     </button>
                     <button id="deleteTestBtn" class="btn btn-danger">
-                        🗑️ Delete Test
+                        🗑️ Supprimer le Test
                     </button>
                 </div>
             </section>
         </main>
 
         <footer>
-            <p>MLC Blade Position Analysis System | © 2025</p>
+            <p>Système d'Analyse Position des Lames MLC | © 2025</p>
         </footer>
     </div>
 

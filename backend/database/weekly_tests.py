@@ -4,6 +4,7 @@ Database models for weekly quality control tests
 """
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from .config import Base
 
@@ -217,6 +218,9 @@ class LeafPositionTest(Base):
     filenames = Column(Text, nullable=True)  # Comma-separated list of filenames
     visualization_paths = Column(Text, nullable=True)  # JSON array of visualization file paths
     file_results = Column(Text, nullable=True)  # JSON string containing detailed measurement results
+    
+    # Relationship to blade results
+    blade_results = relationship("LeafPositionResult", backref="test", lazy="joined")
 
 
 class LeafPositionResult(Base):

@@ -8,7 +8,7 @@ async function openTest(testId) {
     try {
         window.APP_STATE.currentTest = testId;
         
-        showLoading('Loading test form...');
+        showLoading('Chargement du formulaire...');
         
         console.log(`Fetching form for test: ${testId}`);
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute/${testId}/form`);
@@ -39,7 +39,7 @@ async function openTest(testId) {
     } catch (error) {
         hideLoading();
         console.error('Error opening test:', error);
-        alert(`Failed to open test: ${error.message}`);
+        alert(`Échec de l'ouverture du test : ${error.message}`);
     }
 }
 
@@ -78,21 +78,21 @@ async function handleTestSubmission(e) {
         if (isFileUploadTest) {
             const fileInput = document.querySelector('input[type="file"]');
             if (!fileInput || !fileInput.files.length) {
-                throw new Error('Please select at least one file');
+                throw new Error('Veuillez sélectionner au moins un fichier');
             }
             
             const operatorValue = capturedFormData.get('operator');
             if (!operatorValue || !operatorValue.trim()) {
-                throw new Error('Please enter operator name');
+                throw new Error('Veuillez entrer le nom de l\'opérateur');
             }
         } else {
             const operatorValue = capturedFormData.get('operator');
             if (!operatorValue || !operatorValue.trim()) {
-                throw new Error('Please enter operator name');
+                throw new Error('Veuillez entrer le nom de l\'opérateur');
             }
         }
         
-        showLoading('Executing test...');
+        showLoading('Exécution du test...');
         closeTestModal();
         
         if (isFileUploadTest) {
@@ -104,7 +104,7 @@ async function handleTestSubmission(e) {
     } catch (error) {
         hideLoading();
         console.error('Error executing test:', error);
-        alert(`Test execution failed: ${error.message}`);
+        alert(`Échec de l'exécution du test : ${error.message}`);
     }
 }
 

@@ -8,7 +8,7 @@ async function loadAvailableTests() {
     try {
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute`);
         if (!response.ok) {
-            throw new Error('Failed to load tests');
+            throw new Error('Échec du chargement des tests');
         }
         
         const data = await response.json();
@@ -19,8 +19,8 @@ async function loadAvailableTests() {
         console.error('Error loading tests:', error);
         testList.innerHTML = `
             <div class="error-message">
-                <p>❌ Failed to load tests: ${error.message}</p>
-                <button class="btn btn-primary" onclick="loadAvailableTests()">Retry</button>
+                <p>❌ Échec du chargement des tests : ${error.message}</p>
+                <button class="btn btn-primary" onclick="loadAvailableTests()">Réessayer</button>
             </div>
         `;
     }

@@ -156,7 +156,7 @@ async function loadAllTests() {
         
     } catch (error) {
         console.error('Error loading tests:', error);
-        testsContainer.innerHTML = '<p class="placeholder-text">Error loading tests. Check console for details.</p>';
+        testsContainer.innerHTML = '<p class="placeholder-text">Erreur lors du chargement des tests. Consultez la console pour plus de détails.</p>';
     } finally {
         loadingSection.style.display = 'none';
     }
@@ -219,7 +219,7 @@ function clearFilters() {
 
 function displayTests() {
     if (filteredTests.length === 0) {
-        testsContainer.innerHTML = '<p class="placeholder-text">No tests found matching current filters</p>';
+        testsContainer.innerHTML = '<p class="placeholder-text">Aucun test ne correspond aux filtres actuels</p>';
         return;
     }
     
@@ -267,7 +267,7 @@ function updateStats() {
     document.getElementById('shownTests').textContent = filteredTests.length;
     
     // Update current test type
-    let testTypeText = 'All';
+    let testTypeText = 'Tous';
     if (currentFilters.specificTest) {
         testTypeText = TEST_DISPLAY_NAMES[currentFilters.specificTest];
     } else if (currentFilters.testType) {
@@ -276,11 +276,11 @@ function updateStats() {
     document.getElementById('currentTestType').textContent = testTypeText;
     
     // Update current date range
-    let dateRangeText = 'All dates';
+    let dateRangeText = 'Toutes les dates';
     if (currentFilters.startDate || currentFilters.endDate) {
         const start = currentFilters.startDate || '...';
         const end = currentFilters.endDate || '...';
-        dateRangeText = `${start} to ${end}`;
+        dateRangeText = `${start} à ${end}`;
     }
     document.getElementById('currentDateRange').textContent = dateRangeText;
 }
@@ -626,7 +626,7 @@ async function deleteTest() {
     
     const testDisplayName = TEST_DISPLAY_NAMES[selectedTest.test_type] || selectedTest.test_type.toUpperCase();
     
-    if (!confirm(`Are you sure you want to delete ${testDisplayName} Test #${selectedTest.id}?\n\nThis action cannot be undone.`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le Test ${testDisplayName} #${selectedTest.id} ?\n\nCette action est irréversible.`)) {
         return;
     }
     
@@ -655,7 +655,7 @@ async function deleteTest() {
             throw new Error('Failed to delete test');
         }
         
-        alert(`✅ ${testDisplayName} test deleted successfully`);
+        alert(`✅ Test ${testDisplayName} supprimé avec succès`);
         
         // Close detail view and reload tests
         closeTestDetail();
@@ -663,15 +663,15 @@ async function deleteTest() {
         
     } catch (error) {
         console.error('Error deleting test:', error);
-        alert('Error deleting test');
+        alert('Erreur lors de la suppression du test');
     }
 }
 
 async function downloadTestReport() {
     if (!selectedTest) {
-        alert('Please select a test first');
+        alert('Veuillez d\'abord sélectionner un test');
         return;
     }
     
-    alert('Report generation for individual tests not yet implemented');
+    alert('Génération de rapport pour les tests individuels non encore implémentée');
 }

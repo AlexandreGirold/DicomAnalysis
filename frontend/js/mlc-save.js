@@ -512,7 +512,7 @@ function mapTestNameToEndpoint(testName) {
  */
 async function saveMLCTestToDatabase() {
     if (!window.CURRENT_MLC_TEST_DATA) {
-        alert('No test data available to save');
+        alert('Aucune donnée de test disponible pour la sauvegarde');
         return;
     }
     
@@ -527,9 +527,9 @@ async function saveMLCTestToDatabase() {
     
     // Prompt for operator name if not set
     if (!testData.operator) {
-        const operator = prompt('Enter operator name:');
+        const operator = prompt('Entrez le nom de l\'opérateur :');
         if (!operator) {
-            alert('Operator name is required');
+            alert('Le nom de l\'opérateur est requis');
             return;
         }
         testData.operator = operator;
@@ -544,7 +544,7 @@ async function saveMLCTestToDatabase() {
     const saveBtn = document.getElementById('saveTestBtn');
     const originalText = saveBtn.textContent;
     saveBtn.disabled = true;
-    saveBtn.textContent = '⏳ Saving...';
+    saveBtn.textContent = '⏳ Sauvegarde...';
     
     try {
         // Get the correct endpoint for this test type
@@ -595,10 +595,10 @@ async function saveMLCTestToDatabase() {
         };
         const testDisplayName = testTypeNames[testType] || testType.toUpperCase();
         
-        alert(`✅ ${testDisplayName} test saved successfully!\n\nTest ID: ${result.test_id}\n\nYou can view this test in the Review page.`);
+        alert(`✅ Test ${testDisplayName} sauvegardé avec succès !\n\nID du Test : ${result.test_id}\n\nVous pouvez consulter ce test dans la page Revue.`);
         
         // Update button to show saved state
-        saveBtn.textContent = '✅ Saved';
+        saveBtn.textContent = '✅ Sauvegardé';
         saveBtn.classList.remove('btn-success');
         saveBtn.classList.add('btn-secondary');
         
@@ -608,7 +608,7 @@ async function saveMLCTestToDatabase() {
         
     } catch (error) {
         console.error('Error saving test:', error);
-        alert(`Error saving test: ${error.message}`);
+        alert(`Erreur lors de la sauvegarde du test : ${error.message}`);
         
         // Restore button
         saveBtn.disabled = false;
@@ -636,8 +636,8 @@ function addOperatorInputToForm() {
     const operatorField = document.createElement('div');
     operatorField.className = 'form-field';
     operatorField.innerHTML = `
-        <label for="operatorInput">Operator Name:</label>
-        <input type="text" id="operatorInput" class="form-input" placeholder="Enter your name" required>
+        <label for="operatorInput">Nom de l'Opérateur :</label>
+        <input type="text" id="operatorInput" class="form-input" placeholder="Entrez votre nom" required>
     `;
     
     // Insert at the beginning of form

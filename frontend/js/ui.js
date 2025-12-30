@@ -2,7 +2,7 @@
  * UI Helper Functions
  */
 
-function showLoading(message = 'Loading...') {
+function showLoading(message = 'Chargement...') {
     const loadingSection = document.getElementById('loadingSection');
     loadingSection.querySelector('p').textContent = message;
     loadingSection.style.display = 'block';
@@ -54,7 +54,7 @@ window.onclick = function(event) {
         }
         
         if (hasData) {
-            if (confirm('You have entered data. Are you sure you want to close this form?')) {
+            if (confirm('Vous avez entré des données. Êtes-vous sûr de vouloir fermer ce formulaire ?')) {
                 closeTestModal();
             }
         } else {

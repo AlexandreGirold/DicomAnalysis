@@ -327,10 +327,13 @@ async def save_leaf_position_session(data: dict):
         if 'operator' not in data or not data['operator']:
             raise ValueError("operator is required")
         
-        # Accept either 'results' or 'blade_results' for backwards compatibility
-        blade_data = data.get('results') or data.get('blade_results')
-        if not blade_data:
+        # Prefer blade_results (list format) over results (dict format) for individual blade data
+        # Use 'is not None' to allow empty lists
+        blade_data = data.get('blade_results') if 'blade_results' in data else data.get('results')
+        if blade_data is None:
             raise ValueError("results or blade_results is required")
+        
+        logger.info(f"[LEAF-POSITION] Using blade data: type={type(blade_data)}, length={len(blade_data)}")
         
         # Save test to database first
         test_id = database_helpers.save_leaf_position_to_database(

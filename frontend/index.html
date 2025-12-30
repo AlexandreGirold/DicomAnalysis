@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quality Control Tests</title>
+    <title>Tests de Contrôle Qualité</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Quality Control Tests</h1>
+            <h1>Tests de Contrôle Qualité</h1>
             <nav>
                 <a href="/" class="nav-link active">Tests</a>
-                <a href="/static/review.html" class="nav-link">Review</a>
+                <a href="/static/review.html" class="nav-link">Revue</a>
+                <a href="/static/trends.html" class="nav-link">Tendances</a>
                 <a href="/static/config.html" class="nav-link">Config</a>
             </nav>
         </header>
@@ -20,12 +21,12 @@
         <main>
             <!-- Test Selection Section -->
             <section class="test-selection-section">
-                <h2>Available Tests</h2>
+                <h2>Tests Disponibles</h2>
                 
                 <div id="testList" class="test-list">
                     <div class="loading-placeholder">
                         <div class="spinner"></div>
-                        <p>Loading tests...</p>
+                        <p>Chargement des tests...</p>
                     </div>
                 </div>
             </section>
@@ -34,7 +35,7 @@
             <div id="testModal" class="modal" style="display: none;">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3 id="modalTitle">Test Execution</h3>
+                        <h3 id="modalTitle">Exécution du Test</h3>
                         <span class="close" onclick="closeTestModal()">&times;</span>
                     </div>
                     
@@ -46,10 +47,10 @@
                             
                             <div class="form-actions">
                                 <button type="button" class="btn btn-secondary" onclick="closeTestModal()">
-                                    Cancel
+                                    Annuler
                                 </button>
                                 <button type="submit" class="btn btn-primary">
-                                    Execute Test
+                                    Exécuter le Test
                                 </button>
                             </div>
                         </form>
@@ -59,64 +60,64 @@
 
             <!-- Test Results Section -->
             <section id="testResultsSection" class="test-results-section" style="display: none;">
-                <h2>Test Results</h2>
+                <h2>Résultats du Test</h2>
                 
                 <div class="result-header">
-                    <h3 id="resultTestName">Test Name</h3>
+                    <h3 id="resultTestName">Nom du Test</h3>
                     <div id="resultOverallStatus" class="overall-status"></div>
                 </div>
                 
                 <div class="result-details">
                     <div class="result-card">
-                        <h4>Results</h4>
+                        <h4>Résultats</h4>
                         <div id="testResults" class="results-grid"></div>
                     </div>
                     
                     <div id="testVisualizations" class="result-card" style="display: none;">
-                        <h4>Visualizations</h4>
+                        <h4>Visualisations</h4>
                         <div id="visualizationsList" class="visualizations-grid"></div>
                     </div>
                 </div>
                 
                 <div class="action-buttons">
                     <button id="saveTestBtn" class="btn btn-success" onclick="saveMLCTestToDatabase()" style="display: none;">
-                        💾 Save Test to Database
+                        💾 Sauvegarder dans la Base
                     </button>
-                    <button class="btn btn-secondary" onclick="printResults()">Print Results</button>
+                    <button class="btn btn-secondary" onclick="printResults()">Imprimer les Résultats</button>
                 </div>
             </section>
 
             <!-- DICOM Analysis Section (Hidden by default) -->
             <section id="dicomSection" class="upload-section" style="display: none;">
-                <h2>DICOM Analysis</h2>
+                <h2>Analyse DICOM</h2>
                 <p class="info-text">
-                    Upload DICOM files for MLC blade analysis
+                    Téléverser des fichiers DICOM pour l'analyse des lames MLC
                 </p>
                 
                 <div class="upload-area" id="dropZone">
                     <div class="upload-icon">📁</div>
-                    <p>Drag & drop DICOM files here or click to browse</p>
+                    <p>Glisser-déposer les fichiers DICOM ici ou cliquer pour parcourir</p>
                     <input type="file" id="fileInput" multiple accept=".dcm" hidden>
                     <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                        Select Files
+                        Sélectionner des Fichiers
                     </button>
                 </div>
 
                 <div id="fileList" class="file-list"></div>
 
                 <button id="analyzeBtn" class="btn btn-success btn-large" disabled>
-                    � Run Analysis
+                    🚀 Lancer l'Analyse
                 </button>
             </section>
 
             <section id="loadingSection" class="loading-section" style="display: none;">
                 <div class="spinner"></div>
-                <p>Processing... Please wait</p>
+                <p>Traitement en cours... Veuillez patienter</p>
             </section>
         </main>
 
         <footer>
-            <p>Quality Control Test System | © 2025</p>
+            <p>Système de Tests de Contrôle Qualité | © 2025</p>
         </footer>
     </div>
 

@@ -279,11 +279,13 @@ def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
         if not test:
             return None
         
+        # Force load blade_results BEFORE closing session
+        # Access the relationship to trigger loading
+        _ = len(test.blade_results)
+        
         test_dict = _test_to_dict(test)
-        # Add blade results
-        blade_results = db.query(LeafPositionResult).filter(
-            LeafPositionResult.test_id == test.id
-        ).all()
+        
+        # Manually add blade results from the loaded relationship
         test_dict['blade_results'] = [
             {
                 'image_number': br.image_number,
@@ -299,7 +301,7 @@ def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
                 'is_valid': br.is_valid,
                 'status_message': br.status_message
             }
-            for br in blade_results
+            for br in test.blade_results
         ]
         
         return test_dict

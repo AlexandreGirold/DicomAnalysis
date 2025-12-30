@@ -275,33 +275,51 @@ def save_leaf_position_to_database(
         db.flush()
         
         # Save results for each blade in each image
-        for image_idx, image_result in enumerate(results, 1):
-            filename = os.path.basename(filenames[image_idx-1]) if filenames and image_idx <= len(filenames) else None
+        logger.info(f"[SAVE-LEAF] Processing blade results - type: {type(results)}")
+        
+        # Check if results is a dict (old format with file_1_summary keys) or list (blade_results format)
+        if isinstance(results, dict):
+            logger.info(f"[SAVE-LEAF] Results is a dict with keys: {list(results.keys())}")
+            # Results is the old format (file summaries), not individual blades
+            # We should be empty here since old tests don't have blade data
+            logger.warning("[SAVE-LEAF] Results is a dict, no blade data to save")
+        elif isinstance(results, list):
+            logger.info(f"[SAVE-LEAF] Processing {len(results)} blade result entries")
             
-            # Handle both dict and string (skip strings)
-            if not isinstance(image_result, dict):
-                logger.warning(f"Skipping non-dict image_result at index {image_idx}: {type(image_result)}")
-                continue
-            
-            # Each image has multiple blade results
-            blades = image_result.get('blades', [])
-            for blade in blades:
-                blade_result = LeafPositionResult(
-                    test_id=test.id,
-                    image_number=image_idx,
-                    filename=filename,
-                    blade_pair=blade.get('pair'),
-                    position_u_px=blade.get('position_u_px'),
-                    v_sup_px=blade.get('v_sup_px'),
-                    v_inf_px=blade.get('v_inf_px'),
-                    distance_sup_mm=blade.get('distance_sup_mm'),
-                    distance_inf_mm=blade.get('distance_inf_mm'),
-                    length_mm=blade.get('length_mm'),
-                    field_size_mm=blade.get('field_size_mm'),
-                    is_valid=blade.get('is_valid', 'UNKNOWN'),
-                    status_message=blade.get('status_message')
-                )
-                db.add(blade_result)
+            for image_idx, image_result in enumerate(results, 1):
+                filename = os.path.basename(filenames[image_idx-1]) if filenames and image_idx <= len(filenames) else None
+                
+                logger.info(f"[SAVE-LEAF] Image {image_idx}: type={type(image_result)}, keys={list(image_result.keys()) if isinstance(image_result, dict) else 'NOT A DICT'}")
+                
+                # Handle both dict and string (skip strings)
+                if not isinstance(image_result, dict):
+                    logger.warning(f"Skipping non-dict image_result at index {image_idx}: {type(image_result)}")
+                    continue
+                
+                # Each image has multiple blade results
+                blades = image_result.get('blades', [])
+                logger.info(f"[SAVE-LEAF] Image {image_idx}: Found {len(blades)} blades")
+                
+                for blade in blades:
+                    blade_result = LeafPositionResult(
+                        test_id=test.id,
+                        image_number=image_idx,
+                        filename=filename,
+                        blade_pair=blade.get('pair'),
+                        position_u_px=blade.get('position_u_px'),
+                        v_sup_px=blade.get('v_sup_px'),
+                        v_inf_px=blade.get('v_inf_px'),
+                        distance_sup_mm=blade.get('distance_sup_mm'),
+                        distance_inf_mm=blade.get('distance_inf_mm'),
+                        length_mm=blade.get('length_mm'),
+                        field_size_mm=blade.get('field_size_mm'),
+                        is_valid=blade.get('is_valid', 'UNKNOWN'),
+                        status_message=blade.get('status_message')
+                    )
+                    db.add(blade_result)
+                    logger.info(f"[SAVE-LEAF] Added blade {blade.get('pair')} for test {test.id}")
+        else:
+            logger.warning(f"[SAVE-LEAF] Unexpected results type: {type(results)}")
         
         db.commit()
         logger.info(f"✓ Saved Leaf Position test to database (ID: {test.id})")

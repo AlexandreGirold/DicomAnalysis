@@ -39,6 +39,8 @@ class LeafPositionTest(BaseTest):
         )
         self.analyzer = None
         self.visualizations = []
+        self.blade_results = []  # Store individual blade results
+        self.file_results = []  # Store file-level summaries
     
     def get_form_data(self):
         """Return form configuration for this test"""
@@ -205,6 +207,9 @@ class LeafPositionTest(BaseTest):
                 valid_field_sizes = [20, 30, 40]
                 tolerance = 1.0  # ±1mm tolerance
                 
+                # Store individual blade results for this file/image
+                file_blade_results = {'blades': []}
+                
                 for blade in blade_data:
                     # blade is a tuple: (pair_lame, distance_t, distance_p, field_size, status, detected_points)
                     blade_pair = blade[0]
@@ -244,8 +249,22 @@ class LeafPositionTest(BaseTest):
                     if field_size_mm > 0:
                         detected_lengths.append(field_size_mm)
                     
-                    # Don't add individual blade results to main results dictionary
-                    # (they're stored in the database and shown in detail view)
+                    # Store blade result for database
+                    file_blade_results['blades'].append({
+                        'pair': blade_pair,
+                        'position_u_px': position_u,
+                        'v_sup_px': v_sup,
+                        'v_inf_px': v_inf,
+                        'distance_sup_mm': distance_sup,
+                        'distance_inf_mm': distance_inf,
+                        'length_mm': field_size_mm,
+                        'field_size_mm': field_size_mm,
+                        'is_valid': status_simple,
+                        'status_message': original_status
+                    })
+                
+                # Add this file's blade results to the collection
+                self.blade_results.append(file_blade_results)
                 
                 # Estimate field size from detected lengths
                 avg_length = sum(detected_lengths) / len(detected_lengths) if detected_lengths else 0
@@ -253,20 +272,25 @@ class LeafPositionTest(BaseTest):
                 
                 # File summary result
                 file_status = "PASS" if out_of_tolerance_count == 0 else "FAIL"
+                file_summary = {
+                    'file': filename,
+                    'total_blades': total_blades,
+                    'ok': ok_count,
+                    'out_of_tolerance': out_of_tolerance_count,
+                    'closed': closed_count,
+                    'detected_field_size_mm': detected_field_size,
+                    'average_length_mm': avg_length
+                }
+                
                 self.add_result(
                     name=f"file_{file_index}_summary",
-                    value={
-                        'file': filename,
-                        'total_blades': total_blades,
-                        'ok': ok_count,
-                        'out_of_tolerance': out_of_tolerance_count,
-                        'closed': closed_count,
-                        'detected_field_size_mm': detected_field_size,
-                        'average_length_mm': avg_length
-                    },
+                    value=file_summary,
                     status=file_status,
                     details=f"[{filename}] Detected field size: ~{detected_field_size}mm - {ok_count}/{total_blades} blades OK"
                 )
+                
+                # Store file-level summary for display
+                self.file_results.append(file_summary)
                 
                 # Update visualization statistics
                 if self.visualizations and len(self.visualizations) >= file_index:
@@ -327,6 +351,8 @@ class LeafPositionTest(BaseTest):
             'operator': self.operator,
             'overall_result': self.overall_result,
             'results': self.results,
+            'blade_results': self.blade_results,  # Individual blade data for database
+            'file_results': self.file_results,  # File-level summaries for display
             'notes': notes or ''
         }
         
