@@ -16,10 +16,9 @@ class SafetySystemsTest(Base):
     test_date = Column(DateTime, nullable=False, index=True)
     operator = Column(String, nullable=False)
     upload_date = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
-    overall_result = Column(String, nullable=False)  # PASS/FAIL/WARNING
+    overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
-    # Test-specific data columns
     accelerator_warmup = Column(String, nullable=False)
     audio_indicator = Column(String, nullable=False)
     visual_indicators_console = Column(String, nullable=False)
@@ -32,7 +31,6 @@ class SafetySystemsTest(Base):
 
 
 class SafetySystemsResult(Base):
-    """Results table for Safety Systems Test"""
     __tablename__ = "daily_safety_systems_results"
     
     id = Column(Integer, primary_key=True, index=True)

@@ -40,9 +40,6 @@ from database.queries import get_mlc_test_session_by_id, get_leaf_position_test_
 
 
 class MLCBladeReportGenerator:
-    """Generate comprehensive MLC blade analysis reports"""
-    
-    # Tolerance thresholds (in mm)
     TOLERANCE_20MM = 1.0
     TOLERANCE_30MM = 1.0
     TOLERANCE_40MM = 1.0
@@ -52,10 +49,7 @@ class MLCBladeReportGenerator:
         self._setup_custom_styles()
     
     def _setup_custom_styles(self):
-        """Setup custom paragraph styles for professional reports"""
-        
-        # Title style
-        self.styles.add(ParagraphStyle(
+        dd(ParagraphStyle(
             name='ReportTitle',
             parent=self.styles['Heading1'],
             fontSize=26,
@@ -66,7 +60,6 @@ class MLCBladeReportGenerator:
             fontName='Helvetica-Bold'
         ))
         
-        # Section heading
         self.styles.add(ParagraphStyle(
             name='SectionHeading',
             parent=self.styles['Heading2'],
@@ -77,7 +70,6 @@ class MLCBladeReportGenerator:
             fontName='Helvetica-Bold'
         ))
         
-        # Subsection heading
         self.styles.add(ParagraphStyle(
             name='SubsectionHeading',
             parent=self.styles['Heading3'],
@@ -88,7 +80,6 @@ class MLCBladeReportGenerator:
             fontName='Helvetica-Bold'
         ))
         
-        # Body text
         self.styles.add(ParagraphStyle(
             name='ReportBody',
             parent=self.styles['Normal'],
@@ -97,7 +88,6 @@ class MLCBladeReportGenerator:
             leading=14
         ))
         
-        # Summary box style
         self.styles.add(ParagraphStyle(
             name='SummaryText',
             parent=self.styles['Normal'],
@@ -110,30 +100,16 @@ class MLCBladeReportGenerator:
     def generate_blade_compliance_report(
         self,
         test_ids: List[int],
-        blade_size: str = "all",  # "20mm", "30mm", "40mm", or "all"
+        blade_size: str = "all",
         output_path: Optional[str] = None
     ) -> bytes:
-        """
-        Generate comprehensive blade compliance report
-        
-        Args:
-            test_ids: List of test IDs to include in report
-            blade_size: Size filter ("20mm", "30mm", "40mm", or "all")
-            output_path: Optional path to save PDF
-        
-        Returns:
-            PDF data as bytes
-        """
-        # Collect test data
         tests_data = []
         session = SessionLocal()
         
         try:
             for test_id in test_ids:
-                # Try Leaf Position tests FIRST (they have blade_results)
                 test_dict = get_leaf_position_test_by_id(test_id)
                 
-                # If not found, try MLC Leaf Jaw tests
                 if not test_dict:
                     test_dict = get_mlc_test_session_by_id(test_id)
                 
@@ -143,13 +119,11 @@ class MLCBladeReportGenerator:
             if not tests_data:
                 raise ValueError("No valid tests found")
             
-            # Sort by date
             tests_data.sort(key=lambda x: x.get('test_date', ''))
             
         finally:
             session.close()
         
-        # Create PDF
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer, 
@@ -162,29 +136,19 @@ class MLCBladeReportGenerator:
         
         story = []
         
-        # Add cover page
         story.extend(self._create_cover_page(tests_data, blade_size))
         story.append(PageBreak())
         
-        # Add executive summary
         story.extend(self._create_executive_summary(tests_data, blade_size))
         story.append(PageBreak())
         
-        # Add single comprehensive graph (all blades together)
-        story.extend(self._create_comprehensive_blade_graph(tests_data, blade_size))
-        story.append(PageBreak())
-        
-        # Add matrix table (dates as columns, blade numbers as rows)
         story.extend(self._create_matrix_table(tests_data, blade_size))
         
-        # Add methodology annex
         story.append(PageBreak())
         story.extend(self._create_methodology_annex())
         
-        # Build PDF
         doc.build(story)
         
-        # Save if path provided
         if output_path:
             with open(output_path, 'wb') as f:
                 f.write(buffer.getvalue())
@@ -193,7 +157,6 @@ class MLCBladeReportGenerator:
         return buffer.getvalue()
     
     def _create_cover_page(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create report cover page"""
         elements = []
         
         # Title
@@ -242,7 +205,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_executive_summary(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create executive summary with key statistics"""
         elements = []
         
         # Section title
@@ -314,7 +276,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_trend_graphs(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create trend graphs for blade measurements over time"""
         elements = []
         
         # Section title
@@ -444,7 +405,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_detailed_tables(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create detailed tables with all blade measurements"""
         elements = []
         
         # Section title
@@ -465,7 +425,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_size_specific_table(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create table for specific blade size"""
         elements = []
         
         # Subsection title
@@ -583,7 +542,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_methodology_annex(self) -> List:
-        """Create methodology and technical notes annex"""
         elements = []
         
         # Title
@@ -656,22 +614,18 @@ class MLCBladeReportGenerator:
         
         return elements
     
-    # Helper methods
-    
     def _get_blade_size_category(self, blade: Dict) -> str:
-        """Determine blade size category from blade data"""
         size = blade.get('field_size_mm', 0)
         if isinstance(size, (int, float)):
-            if 18 <= size <= 22:
+            if abs(size - 20) <= abs(size - 30) and abs(size - 20) <= abs(size - 40):
                 return "20mm"
-            elif 28 <= size <= 32:
+            elif abs(size - 30) <= abs(size - 20) and abs(size - 30) <= abs(size - 40):
                 return "30mm"
-            elif 38 <= size <= 42:
+            elif abs(size - 40) <= abs(size - 20) and abs(size - 40) <= abs(size - 30):
                 return "40mm"
         return "unknown"
     
     def _get_tolerance(self, blade_size: str) -> float:
-        """Get tolerance value for blade size"""
         tolerance_map = {
             "20mm": self.TOLERANCE_20MM,
             "30mm": self.TOLERANCE_30MM,
@@ -680,7 +634,6 @@ class MLCBladeReportGenerator:
         return tolerance_map.get(blade_size, 1.0)
     
     def _identify_major_anomalies(self, blades: List[Dict]) -> List[Dict]:
-        """Identify major anomalies in blade measurements"""
         anomalies = []
         
         for blade in blades:
@@ -701,14 +654,11 @@ class MLCBladeReportGenerator:
                             'severity': abs(deviation) - tolerance
                         })
         
-        
-        # Sort by severity
         anomalies.sort(key=lambda x: x['severity'], reverse=True)
         
         return anomalies
     
     def _create_comprehensive_blade_graph(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create single graph with all blades (27-54) on X-axis"""
         elements = []
         
         # Section title
@@ -833,7 +783,6 @@ class MLCBladeReportGenerator:
         return elements
     
     def _create_matrix_table(self, tests_data: List[Dict], blade_size: str) -> List:
-        """Create matrix table: rows=blade numbers, columns=test dates"""
         elements = []
         
         # Section title
@@ -852,6 +801,8 @@ class MLCBladeReportGenerator:
             
             blade_results = test.get('blade_results', [])
             
+            # Group blade results by blade_pair for this test (to handle multiple images)
+            blades_by_pair = {}
             for blade in blade_results:
                 if blade_size != "all" and self._get_blade_size_category(blade) != blade_size:
                     continue
@@ -867,46 +818,73 @@ class MLCBladeReportGenerator:
                 except:
                     continue
                 
+                if blade_num not in blades_by_pair:
+                    blades_by_pair[blade_num] = []
+                
+                blades_by_pair[blade_num].append(blade)
+            
+            # Now calculate average for each blade_pair
+            for blade_num, blade_list in blades_by_pair.items():
                 if blade_num not in blade_date_matrix:
                     blade_date_matrix[blade_num] = {}
                 
-                # Calculate deviation
-                size = blade.get('field_size_mm', 0)
-                size_cat = self._get_blade_size_category(blade)
-                target = float(size_cat.replace('mm', '')) if size_cat != 'unknown' else size
-                tolerance = self._get_tolerance(size_cat)
-                deviation = size - target
-                status = blade.get('is_valid', 'UNKNOWN')
+                valid_blades = [b for b in blade_list if b.get('is_valid') != 'CLOSED']
                 
-                # Store deviation value with status indicator
-                if status == 'CLOSED':
-                    blade_date_matrix[blade_num][test_date] = ('CLOSED', status)
-                elif status == 'OUT_OF_TOLERANCE' or abs(deviation) > tolerance:
-                    blade_date_matrix[blade_num][test_date] = (f"{deviation:+.2f}", 'OUT_OF_TOLERANCE')
+                if not valid_blades:
+                    blade_date_matrix[blade_num][test_date] = ('CLOSED', 'CLOSED')
                 else:
-                    blade_date_matrix[blade_num][test_date] = (f"{deviation:+.2f}", 'OK')
+                    sizes = [b.get('field_size_mm', 0) for b in valid_blades]
+                    avg_size = sum(sizes) / len(sizes)
+                    
+                    # Use the first blade's category for target
+                    size_cat = self._get_blade_size_category({'field_size_mm': avg_size})
+                    target = float(size_cat.replace('mm', '')) if size_cat != 'unknown' else avg_size
+                    tolerance = self._get_tolerance(size_cat)
+                    deviation = avg_size - target
+                    
+                    statuses = [b.get('is_valid') for b in valid_blades]
+                    if 'OUT_OF_TOLERANCE' in statuses or abs(deviation) > tolerance:
+                        blade_date_matrix[blade_num][test_date] = (f"{deviation:+.2f}", 'OUT_OF_TOLERANCE')
+                    else:
+                        blade_date_matrix[blade_num][test_date] = (f"{deviation:+.2f}", 'OK')
         
         if not blade_date_matrix:
             elements.append(Paragraph("Aucune donnée disponible.", self.styles['ReportBody']))
             return elements
         
-        # Build table
-        table_data = [['Lame'] + test_dates]  # Header row
+        table_data = [['Lame'] + test_dates + ['Moyenne', 'Écart Max']]
         
         for blade_num in sorted(blade_date_matrix.keys()):
             row = [str(blade_num)]
+            deviations = []
+            
             for date in test_dates:
                 cell_data = blade_date_matrix[blade_num].get(date, ('-', 'NONE'))
-                # Extract just the value for display (first element of tuple)
                 value = cell_data[0] if isinstance(cell_data, tuple) else cell_data
                 row.append(value)
+                
+                if isinstance(cell_data, tuple) and cell_data[1] != 'CLOSED' and cell_data[1] != 'NONE':
+                    try:
+                        dev = float(cell_data[0])
+                        deviations.append(dev)
+                    except:
+                        pass
+            
+            if deviations:
+                moyenne = sum(deviations) / len(deviations)
+                ecart_max = max(abs(d) for d in deviations)
+                row.append(f"{moyenne:+.2f}")
+                row.append(f"{ecart_max:.2f}")
+            else:
+                row.append('-')
+                row.append('-')
+            
             table_data.append(row)
         
-        # Create table
-        col_widths = [0.6*inch] + [1.0*inch] * len(test_dates)
+        num_date_cols = len(test_dates)
+        col_widths = [0.6*inch] + [1.0*inch] * num_date_cols + [0.8*inch, 0.8*inch]
         table = Table(table_data, colWidths=col_widths)
         
-        # Style table
         table_style = [
             # Header row
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c5282')),
@@ -921,6 +899,11 @@ class MLCBladeReportGenerator:
             ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             
+            # Summary columns (Moyenne, Écart Max) - highlighted background
+            ('BACKGROUND', (-2, 0), (-1, 0), colors.HexColor('#1e40af')),
+            ('BACKGROUND', (-2, 1), (-1, -1), colors.HexColor('#dbeafe')),
+            ('FONTNAME', (-2, 1), (-1, -1), 'Helvetica-Bold'),
+            
             # Data cells
             ('FONTSIZE', (1, 1), (-1, -1), 8),
             ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
@@ -929,6 +912,7 @@ class MLCBladeReportGenerator:
             # Borders
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('LINEAFTER', (-3, 0), (-3, -1), 2, colors.HexColor('#2c5282')),  # Separator before summary columns
             
             # Padding
             ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -937,10 +921,11 @@ class MLCBladeReportGenerator:
             ('RIGHTPADDING', (0, 0), (-1, -1), 3),
         ]
         
-        # Color code cells based on status
+        # Color code cells based on status (only for test date columns, not summary columns)
+        num_date_cols = len(test_dates)
         for row_idx in range(1, len(table_data)):
             blade_num = int(table_data[row_idx][0])
-            for col_idx in range(1, len(table_data[row_idx])):
+            for col_idx in range(1, num_date_cols + 1):
                 date_str = test_dates[col_idx - 1]
                 cell_data = blade_date_matrix.get(blade_num, {}).get(date_str, ('-', 'NONE'))
                 
@@ -951,15 +936,12 @@ class MLCBladeReportGenerator:
                     status = 'NONE'
                 
                 if status == 'OUT_OF_TOLERANCE':
-                    # Out of tolerance - red background with dark red text
                     table_style.append(('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), colors.HexColor('#fee2e2')))
                     table_style.append(('TEXTCOLOR', (col_idx, row_idx), (col_idx, row_idx), colors.HexColor('#991b1b')))
                     table_style.append(('FONTNAME', (col_idx, row_idx), (col_idx, row_idx), 'Helvetica-Bold'))
                 elif status == 'OK':
-                    # Within tolerance - green text
                     table_style.append(('TEXTCOLOR', (col_idx, row_idx), (col_idx, row_idx), colors.HexColor('#15803d')))
                 elif status == 'CLOSED':
-                    # Closed - gray background with dark text
                     table_style.append(('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), colors.HexColor('#f3f4f6')))
                     table_style.append(('TEXTCOLOR', (col_idx, row_idx), (col_idx, row_idx), colors.HexColor('#6b7280')))
                     table_style.append(('FONTNAME', (col_idx, row_idx), (col_idx, row_idx), 'Helvetica-Bold'))
@@ -981,20 +963,8 @@ class MLCBladeReportGenerator:
         return elements
 
 
-# Convenience functions
 def generate_blade_report(test_ids: List[int], blade_size: str = "all", 
                          output_path: Optional[str] = None) -> bytes:
-    """
-    Generate MLC blade compliance report
-    
-    Args:
-        test_ids: List of test IDs to analyze
-        blade_size: "20mm", "30mm", "40mm", or "all"
-        output_path: Optional path to save PDF
-    
-    Returns:
-        PDF data as bytes
-    """
     generator = MLCBladeReportGenerator()
     return generator.generate_blade_compliance_report(test_ids, blade_size, output_path)
 

@@ -14,10 +14,10 @@ Please import from 'database' package instead:
     from database import SessionLocal, MVCenterConfig
 """
 
-# Import everything from the new modular structure
-from database import *  # noqa: F401, F403
+#ecverything hahaha
+from database import * 
 
-# Maintain backward compatibility - expose all exports
+#backward compatibility
 from database import (
     Base, engine, SessionLocal, init_db,
     SafetySystemsTest, SafetySystemsResult,

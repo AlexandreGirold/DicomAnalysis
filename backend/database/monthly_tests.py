@@ -19,13 +19,11 @@ class PositionTableV2Test(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
-    # Test-specific data columns
     position_175 = Column(Float, nullable=False)
     position_215 = Column(Float, nullable=False)
 
 
 class PositionTableV2Result(Base):
-    """Results table for Position Table V2 Test"""
     __tablename__ = "monthly_position_table_v2_results"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -33,7 +31,6 @@ class PositionTableV2Result(Base):
 
 
 class AlignementLaserTest(Base):
-    """Monthly Alignement Laser Test"""
     __tablename__ = "monthly_alignement_laser"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -43,14 +40,12 @@ class AlignementLaserTest(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
-    # Test-specific data columns
     ecart_proximal = Column(Float, nullable=False)
     ecart_central = Column(Float, nullable=False)
     ecart_distal = Column(Float, nullable=False)
 
 
 class AlignementLaserResult(Base):
-    """Results table for Alignement Laser Test"""
     __tablename__ = "monthly_alignement_laser_results"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -58,7 +53,6 @@ class AlignementLaserResult(Base):
 
 
 class QuasarTest(Base):
-    """Monthly QUASAR Test"""
     __tablename__ = "monthly_quasar"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -68,7 +62,6 @@ class QuasarTest(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
-    # Test-specific data columns
     latence_status = Column(String, nullable=False)
     latence_reason = Column(String, nullable=True)
     coord_correction = Column(Float, nullable=True)
@@ -78,7 +71,6 @@ class QuasarTest(Base):
 
 
 class QuasarResult(Base):
-    """Results table for QUASAR Test"""
     __tablename__ = "monthly_quasar_results"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -86,7 +78,6 @@ class QuasarResult(Base):
 
 
 class IndiceQualityTest(Base):
-    """Monthly Indice de Qualité Test"""
     __tablename__ = "monthly_indice_quality"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -96,7 +87,6 @@ class IndiceQualityTest(Base):
     overall_result = Column(String, nullable=False)
     notes = Column(Text, nullable=True)
     filenames = Column(Text, nullable=True)
-    # Test-specific data columns
     d5_m1 = Column(Float, nullable=True)
     d5_m2 = Column(Float, nullable=True)
     d5_m3 = Column(Float, nullable=True)
@@ -112,7 +102,6 @@ class IndiceQualityTest(Base):
 
 
 class IndiceQualityResult(Base):
-    """Results table for Indice de Qualité Test"""
     __tablename__ = "monthly_indice_quality_results"
     
     id = Column(Integer, primary_key=True, index=True)
