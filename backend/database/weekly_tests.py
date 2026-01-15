@@ -219,3 +219,5 @@ class LeafPositionResult(Base):
     field_size_mm = Column(Float, nullable=True)
     is_valid = Column(String, nullable=False)
     status_message = Column(Text, nullable=True)
+    blade_top_average = Column(Float, nullable=True)
+    blade_bottom_average = Column(Float, nullable=True)

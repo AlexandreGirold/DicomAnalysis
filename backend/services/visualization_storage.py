@@ -27,18 +27,26 @@ def save_visualization(
     analysis_name: str = "",
     original_filename: str = ""
 ) -> Optional[str]:
-    try:ge'):
+    try:
+        # Remove data URL prefix if present
+        if base64_data.startswith('data:image'):
             base64_data = base64_data.split(',', 1)[1]
         
         image_data = base64.b64decode(base64_data)
-        ATIONS_BASE_PATH, test_type)
+        
+        # Create test type directory
+        test_dir = os.path.join(VISUALIZATIONS_BASE_PATH, test_type)
         os.makedirs(test_dir, exist_ok=True)
-        e.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         analysis_suffix = f"_{analysis_name}" if analysis_name else ""
         filename = f"test_{test_id}_img_{file_index}{analysis_suffix}_{timestamp}.png"
         
         filepath = os.path.join(test_dir, filename)
-        e.open(io.BytesIO(image_data))
+        
+        # Save image
+        image = Image.open(io.BytesIO(image_data))
         image.save(filepath, 'PNG', optimize=True)
         
         relative_path = f"visualizations/{test_type}/{filename}"

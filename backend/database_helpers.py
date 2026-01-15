@@ -300,6 +300,16 @@ def save_leaf_position_to_database(
                 blades = image_result.get('blades', [])
                 logger.info(f"[SAVE-LEAF] Image {image_idx}: Found {len(blades)} blades")
                 
+                # Calculate averages for this image
+                top_distances = [b.get('distance_sup_mm') for b in blades if b.get('distance_sup_mm') is not None]
+                bottom_distances = [b.get('distance_inf_mm') for b in blades if b.get('distance_inf_mm') is not None]
+                
+                image_top_avg = sum(top_distances) / len(top_distances) if top_distances else None
+                image_bottom_avg = sum(bottom_distances) / len(bottom_distances) if bottom_distances else None
+                
+                if image_top_avg is not None or image_bottom_avg is not None:
+                    logger.info(f"[SAVE-LEAF] Image {image_idx} averages - Top: {image_top_avg:.2f}mm, Bottom: {image_bottom_avg:.2f}mm")
+                
                 for blade in blades:
                     blade_result = LeafPositionResult(
                         test_id=test.id,
@@ -314,7 +324,9 @@ def save_leaf_position_to_database(
                         length_mm=blade.get('length_mm'),
                         field_size_mm=blade.get('field_size_mm'),
                         is_valid=blade.get('is_valid', 'UNKNOWN'),
-                        status_message=blade.get('status_message')
+                        status_message=blade.get('status_message'),
+                        blade_top_average=image_top_avg,
+                        blade_bottom_average=image_bottom_avg
                     )
                     db.add(blade_result)
                     logger.info(f"[SAVE-LEAF] Added blade {blade.get('pair')} for test {test.id}")

@@ -3,7 +3,7 @@ Leaf Position Test
 Simple test to check MLC blade positions and their lengths from DICOM images.
 Similar to MLC Leaf and Jaw test but supports 20mm, 30mm, or 40mm field sizes.
 """
-from ..basic_tests.base_test import BaseTest
+from ...basic_tests.base_test import BaseTest
 from datetime import datetime
 from typing import Optional, List
 import os
@@ -12,18 +12,19 @@ import logging
 import base64
 import io
 import glob
+from ...visualization_storage import save_multiple_visualizations
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Add parent directory to path to import leaf_pos
-parent_dir = os.path.dirname(os.path.dirname(__file__))
+# Add parent directory to path to import leaf_position
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, parent_dir)
 
 try:
-    from leaf_pos import MLCBladeAnalyzer
+    from .analyzer import MLCBladeAnalyzer
 except ImportError:
-    from ..leaf_pos import MLCBladeAnalyzer
+    from analyzer import MLCBladeAnalyzer
 
 
 class LeafPositionTest(BaseTest):
@@ -182,16 +183,29 @@ class LeafPositionTest(BaseTest):
                 # Find and convert the generated PNG visualization to base64
                 # The analyzer saves files as: blade_detection_{basename}.png
                 base_name = os.path.splitext(filename)[0]
-                # Search in current directory for any PNG files with this pattern
-                png_pattern = f"blade_detection_*{base_name}*.png"
-                png_files = glob.glob(png_pattern)
                 
-                # Also try without wildcards for exact match
-                if not png_files:
-                    png_pattern = f"blade_detection_{base_name}.png"
-                    png_files = glob.glob(png_pattern)
+                # Search in multiple locations for the PNG file
+                search_dirs = [
+                    os.getcwd(),  # Current working directory
+                    os.path.dirname(filepath),  # Same directory as DICOM file
+                    os.path.join(os.getcwd(), 'backend'),  # Backend directory
+                    'backend',  # Relative backend
+                ]
                 
-                logger.info(f"Looking for PNG with pattern: {png_pattern}, found: {len(png_files)} files")
+                png_files = []
+                for search_dir in search_dirs:
+                    if not os.path.exists(search_dir):
+                        continue
+                    # Try with wildcards
+                    pattern1 = os.path.join(search_dir, f"blade_detection_*{base_name}*.png")
+                    pattern2 = os.path.join(search_dir, f"blade_detection_{base_name}.png")
+                    png_files.extend(glob.glob(pattern1))
+                    png_files.extend(glob.glob(pattern2))
+                
+                # Remove duplicates
+                png_files = list(set(png_files))
+                
+                logger.info(f"Looking for PNG for {base_name}, found: {len(png_files)} files")
                 if png_files:
                     logger.info(f"Found PNG files: {png_files}")
                 

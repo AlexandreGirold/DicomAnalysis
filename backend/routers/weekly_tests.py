@@ -322,6 +322,15 @@ async def save_leaf_position_session(data: dict):
     """Save Leaf Position test session"""
     logger.info("[LEAF-POSITION] Saving test session")
     logger.info(f"[LEAF-POSITION] Data keys: {list(data.keys())}")
+    
+    # Debug visualization presence
+    if 'visualizations' in data:
+        logger.info(f"[LEAF-POSITION] Visualizations present: {len(data['visualizations'])} items")
+        for i, viz in enumerate(data['visualizations']):
+            logger.info(f"[LEAF-POSITION] Visualization {i}: keys={list(viz.keys() if isinstance(viz, dict) else [])}")
+    else:
+        logger.warning("[LEAF-POSITION] NO visualizations in request data!")
+    
     try:
         test_date = parse_test_date(data.get('test_date'))
         if 'operator' not in data or not data['operator']:
