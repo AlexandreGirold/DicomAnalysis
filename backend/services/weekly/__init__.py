@@ -5,7 +5,9 @@ all the weekly tests, this is the same for monthly and daily and if added later 
 """
 from .niveau_helium import NiveauHeliumTest, test_helium_level
 from .PIQT import PIQTTest, test_piqt
-from .MVIC import MVICTest, test_mvic
+from .MVIC import MVICChampTest, test_mvic
+from .MVIC_fente import MVICFenteTest, test_mvic_fente_v2
+from .leaf_position import LeafPositionTest, test_leaf_position
 import sys
 import os
 services_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,16 +30,28 @@ WEEKLY_TESTS = {
         'description': 'ANSM - Exactitude des positions de lames MLC - Analyse DICOM',
         'category': 'weekly'
     },
+    'leaf_position': {
+        'class': LeafPositionTest,
+        'function': test_leaf_position,
+        'description': 'Détection automatique des positions et longueurs des lames MLC',
+        'category': 'weekly'
+    },
     'mvic': {
-        'class': MVICTest,
+        'class': MVICChampTest,
         'function': test_mvic,
-        'description': 'MVIC - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
+        'description': 'MVIC-Champ - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
         'category': 'weekly'
     },
     'piqt': {
         'class': PIQTTest,
         'function': test_piqt,
         'description': 'PIQT - Philips Image Quality Test - Parse rapport HTML',
+        'category': 'weekly'
+    },
+    'mvic_fente_v2': {
+        'class': MVICFenteTest,
+        'function': test_mvic_fente_v2,
+        'description': 'MVIC Fente - Détection par contours (méthode ImageJ) - Largeur et espacement',
         'category': 'weekly'
     }
 }

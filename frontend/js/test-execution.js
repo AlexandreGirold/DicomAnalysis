@@ -1,15 +1,17 @@
 /**
  * Test Execution Logic
+ * ce fichier permet d'enregitrer les doness des formulaires de tests et de les envoyer
+ *  au backend pour exécution (grace a fetch API )
  */
 
 async function openTest(testId) {
     try {
         window.APP_STATE.currentTest = testId;
         
-        showLoading('Loading test form...');
+        showLoading('Chargement du formulaire...');
         
         console.log(`Fetching form for test: ${testId}`);
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}/form`);
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute/${testId}/form`);
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Form fetch failed:', response.status, errorText);
@@ -37,7 +39,7 @@ async function openTest(testId) {
     } catch (error) {
         hideLoading();
         console.error('Error opening test:', error);
-        alert(`Failed to open test: ${error.message}`);
+        alert(`Échec de l'ouverture du test : ${error.message}`);
     }
 }
 
@@ -57,7 +59,8 @@ async function handleTestSubmission(e) {
         const capturedFormData = new FormData(testForm);
         
         console.log('Captured form data entries:');
-        for (let [key, value] of capturedFormData.entries()) {
+        for (let [key, value] of capturedFormData.entries())
+            {
             console.log(`${key}:`, value);
         }
         
@@ -65,7 +68,7 @@ async function handleTestSubmission(e) {
         let isFileUploadTest = false;
         if (window.APP_STATE.currentFormData && window.APP_STATE.currentFormData.file_upload) {
             isFileUploadTest = true;
-        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic') {
+        } else if (testId === 'mlc_leaf_jaw' || testId === 'mvic' || testId === 'mvic_fente' || testId === 'leaf_position') {
             isFileUploadTest = true;
         }
         
@@ -75,21 +78,21 @@ async function handleTestSubmission(e) {
         if (isFileUploadTest) {
             const fileInput = document.querySelector('input[type="file"]');
             if (!fileInput || !fileInput.files.length) {
-                throw new Error('Please select at least one file');
+                throw new Error('Veuillez sélectionner au moins un fichier');
             }
             
             const operatorValue = capturedFormData.get('operator');
             if (!operatorValue || !operatorValue.trim()) {
-                throw new Error('Please enter operator name');
+                throw new Error('Veuillez entrer le nom de l\'opérateur');
             }
         } else {
             const operatorValue = capturedFormData.get('operator');
             if (!operatorValue || !operatorValue.trim()) {
-                throw new Error('Please enter operator name');
+                throw new Error('Veuillez entrer le nom de l\'opérateur');
             }
         }
         
-        showLoading('Executing test...');
+        showLoading('Exécution du test...');
         closeTestModal();
         
         if (isFileUploadTest) {
@@ -101,7 +104,7 @@ async function handleTestSubmission(e) {
     } catch (error) {
         hideLoading();
         console.error('Error executing test:', error);
-        alert(`Test execution failed: ${error.message}`);
+        alert(`Échec de l'exécution du test : ${error.message}`);
     }
 }
 
@@ -118,7 +121,7 @@ async function handleRegularTest(capturedFormData, testId) {
     
     console.log('Submitting regular test data:', data);
     
-    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`, {
+    const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/execute/${testId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -135,15 +138,26 @@ async function handleRegularTest(capturedFormData, testId) {
     hideLoading();
     
     displayTestResults(result);
+    // Pass testId so save function knows which endpoint to use
+    enableMLCTestSave(result, testId);
 }
 
 async function handleFileUploadTest(capturedFormData, testId) {
     console.log('Submitting file upload test to:', testId);
     
     // Use specific endpoint for the test
-    const endpoint = testId === 'mlc_leaf_jaw' 
-        ? `${window.APP_CONFIG.API_BASE_URL}/basic-tests/mlc-leaf-jaw`
-        : `${window.APP_CONFIG.API_BASE_URL}/basic-tests/${testId}`;
+    let endpoint;
+    if (testId === 'mlc_leaf_jaw') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mlc-leaf-jaw`;
+    } else if (testId === 'mvic_fente') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic_fente`;
+    } else if (testId === 'mvic_fente_v2') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/mvic-fente-v2`;
+    } else if (testId === 'leaf_position') {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/leaf-position`;
+    } else {
+        endpoint = `${window.APP_CONFIG.API_BASE_URL}/execute/${testId}`;
+    }
     
     console.log('Upload endpoint:', endpoint);
     
@@ -162,6 +176,9 @@ async function handleFileUploadTest(capturedFormData, testId) {
     hideLoading();
     
     displayTestResults(result);
+    
+    // Pass testId directly - it will be used to look up the correct endpoint
+    enableMLCTestSave(result, testId);
 }
 
 // Initialize form submission handler

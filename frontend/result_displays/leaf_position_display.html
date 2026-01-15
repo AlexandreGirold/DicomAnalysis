@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affichage Résultat Test Position des Lames</title>
+    <link rel="stylesheet" href="../styles.css">
+    <style>
+        .result-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .result-header {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .result-header h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .result-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .meta-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .meta-item label {
+            font-weight: bold;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .meta-item .value {
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .result-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .result-badge.PASS { background: #d4edda; color: #155724; }
+        .result-badge.FAIL { background: #f8d7da; color: #721c24; }
+        .result-badge.WARNING { background: #fff3cd; color: #856404; }
+        .result-badge.COMPLETE { background: #d1ecf1; color: #0c5460; }
+        
+        .summary-section {
+            margin: 30px 0;
+        }
+        
+        .summary-section h2 {
+            color: #007bff;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .test-selector {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .test-selector select {
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            min-width: 300px;
+        }
+        
+        .test-selector button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .test-selector button:hover {
+            background: #0056b3;
+        }
+        
+        .visualizations-section {
+            margin: 30px 0;
+        }
+        
+        .visualization-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .visualization-item {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+            background: white;
+        }
+        
+        .visualization-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .visualization-item img:hover {
+            transform: scale(1.02);
+        }
+        
+        .visualization-label {
+            padding: 10px;
+            background: #f8f9fa;
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            cursor: pointer;
+        }
+        
+        .lightbox img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .blade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .blade-table th {
+            background: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .blade-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .blade-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .blade-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .status-ok { color: #28a745; font-weight: bold; }
+        .status-out { color: #fd7e14; font-weight: bold; }
+        .status-closed { color: #6c757d; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visualisation Résultats Test Position des Lames</h1>
+        
+        <div class="test-selector">
+            <label for="testSelect">Sélectionner un test à afficher :</label>
+            <select id="testSelect">
+                <option value="">Chargement des tests...</option>
+            </select>
+            <button onclick="loadSelectedTest()">Afficher le Test</button>
+            <button onclick="window.location.href='../review.html'">Retour à la Revue</button>
+        </div>
+        
+        <div id="resultContainer"></div>
+    </div>
+    
+    <!-- Lightbox for viewing images -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img id="lightboxImage" src="" alt="Full size visualization">
+    </div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        // Load available tests on page load
+        async function loadAvailableTests() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/leaf-position-sessions?limit=50`);
+                const data = await response.json();
+                
+                const select = document.getElementById('testSelect');
+                select.innerHTML = '<option value="">-- Sélectionner un test --</option>';
+                
+                data.tests.forEach(test => {
+                    const option = document.createElement('option');
+                    option.value = test.id;
+                    const date = new Date(test.test_date).toLocaleDateString();
+                    option.textContent = `Test #${test.id} - ${date} - ${test.operator} - ${test.overall_result}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading tests:', error);
+                document.getElementById('testSelect').innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+        }
+        
+        // Load selected test
+        async function loadSelectedTest() {
+            const testId = document.getElementById('testSelect').value;
+            if (!testId) {
+                alert('Veuillez sélectionner un test');
+                return;
+            }
+            
+            displayTest(testId);
+        }
+        
+        // Display test result
+        async function displayTest(testId) {
+            const container = document.getElementById('resultContainer');
+            container.innerHTML = '<div class="loading">Chargement du résultat...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/leaf-position-sessions/${testId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                container.innerHTML = renderTestResult(data);
+                
+            } catch (error) {
+                console.error('Error loading test:', error);
+                container.innerHTML = `<div class="error">Erreur de chargement : ${error.message}</div>`;
+            }
+        }
+        
+        // Render test result HTML
+        function renderTestResult(data) {
+            const fmt = (val) => val != null ? (typeof val === 'number' ? val.toFixed(3) : val) : 'N/A';
+            
+            let html = `
+                <div class="result-container">
+                    <div class="result-header">
+                        <h1>📏 Test Position des Lames</h1>
+                        <span class="result-badge ${data.overall_result}">${data.overall_result}</span>
+                    </div>
+                    
+                    <div class="result-meta">
+                        <div class="meta-item">
+                            <label>ID Test</label>
+                            <div class="value">#${data.id}</div>
+                        </div>
+                        <div class="meta-item">
+                            <label>Date du Test</label>
+                            <div class="value">${new Date(data.test_date).toLocaleString('fr-FR')}</div>
+                        </div>
+                        <div class="meta-item">
+                            <label>Opérateur</label>
+                            <div class="value">${data.operator}</div>
+                        </div>
+                        <div class="meta-item">
+                            <label>Date d'Upload</label>
+                            <div class="value">${new Date(data.upload_date).toLocaleString('fr-FR')}</div>
+                        </div>
+                    </div>
+                    
+                    ${data.notes ? `<div class="meta-item"><label>Commentaires</label><div class="value">${data.notes}</div></div>` : ''}
+                    
+                    ${data.filenames ? `
+                        <div class="meta-item">
+                            <label>Fichiers</label>
+                            <div class="value">${data.filenames.split(',').join(', ')}</div>
+                        </div>
+                    ` : ''}
+            `;
+            
+            // Add visualizations if available
+            if (data.visualization_paths) {
+                const vizPaths = JSON.parse(data.visualization_paths);
+                html += `
+                    <div class="summary-section visualizations-section">
+                        <h2>Visualisations du Test (${vizPaths.length})</h2>
+                        <div class="visualization-gallery">
+                `;
+                
+                vizPaths.forEach((path, index) => {
+                    const fullPath = `/static/${path}`;
+                    html += `
+                        <div class="visualization-item">
+                            <img src="${fullPath}" alt="Visualization ${index + 1}" onclick="openLightbox('${fullPath}')" />
+                            <div class="visualization-label">Image ${index + 1}</div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add blade results table
+            if (data.blade_results && data.blade_results.length > 0) {
+                html += `
+                    <div class="summary-section">
+                        <h2>Détails des Lames (${data.blade_results.length})</h2>
+                        <table class="blade-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Paire de Lames</th>
+                                    <th>U (px)</th>
+                                    <th>V Haut (px)</th>
+                                    <th>V Bas (px)</th>
+                                    <th>Dist Haut (mm)</th>
+                                    <th>Dist Bas (mm)</th>
+                                    <th>Longueur (mm)</th>
+                                    <th>Taille Champ (mm)</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.blade_results.forEach(blade => {
+                    const statusClass = blade.is_valid === 'OK' ? 'status-ok' : 
+                                       blade.is_valid === 'OUT_OF_TOLERANCE' ? 'status-out' : 
+                                       'status-closed';
+                    
+                    html += `
+                        <tr>
+                            <td>${blade.image_number || 'N/A'}</td>
+                            <td>${blade.blade_pair || 'N/A'}</td>
+                            <td>${fmt(blade.position_u_px)}</td>
+                            <td>${fmt(blade.v_sup_px)}</td>
+                            <td>${fmt(blade.v_inf_px)}</td>
+                            <td>${fmt(blade.distance_sup_mm)}</td>
+                            <td>${fmt(blade.distance_inf_mm)}</td>
+                            <td>${fmt(blade.length_mm)}</td>
+                            <td>${fmt(blade.field_size_mm)}</td>
+                            <td class="${statusClass}">${blade.is_valid || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // Lightbox functions
+        function openLightbox(imageSrc) {
+            document.getElementById('lightboxImage').src = imageSrc;
+            document.getElementById('lightbox').style.display = 'block';
+        }
+        
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+        }
+        
+        // Load URL parameter if provided
+        const urlParams = new URLSearchParams(window.location.search);
+        const testId = urlParams.get('id');
+        
+        if (testId) {
+            displayTest(testId);
+        }
+        
+        // Load available tests
+        loadAvailableTests();
+    </script>
+</body>
+</html>

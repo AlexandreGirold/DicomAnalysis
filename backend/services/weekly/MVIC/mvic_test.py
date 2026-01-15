@@ -33,15 +33,15 @@ from .taille_champ import FieldSizeValidator
 from .forme_champ import FieldShapeValidator
 
 
-class MVICTest(BaseTest):
+class MVICChampTest(BaseTest):
     """
-    Test MVIC - Validation de la taille et de la forme du champ de radiation
+    Test MVIC-Champ - Validation de la taille et de la forme du champ de radiation
     Traite 5 images DICOM et extrait automatiquement les informations
     """
     
     def __init__(self):
         super().__init__(
-            test_name="MVIC - MV Imaging Check",
+            test_name="MVIC-Champ - MV Imaging Check",
             description="Validation de la taille et de la forme du champ de radiation (5 images, taille ±1mm, angles 90° ±1°)"
         )
         self.size_validator = FieldSizeValidator()
@@ -124,7 +124,11 @@ class MVICTest(BaseTest):
             cv2.drawContours(contour_img, [field_contour], -1, (0, 255, 0), 2)
             
             if angle_data and 'approx_polygon' in angle_data:
-                cv2.drawContours(contour_img, [angle_data['approx_polygon']], -1, (255, 255, 0), 2)
+                # Convert back to numpy array if it was serialized to list
+                approx_poly = angle_data['approx_polygon']
+                if isinstance(approx_poly, list):
+                    approx_poly = np.array(approx_poly, dtype=np.int32)
+                cv2.drawContours(contour_img, [approx_poly], -1, (255, 255, 0), 2)
             
             axes[0].imshow(contour_img)
             
@@ -326,6 +330,9 @@ class MVICTest(BaseTest):
         """
         self.set_test_info(operator, test_date)
         
+        # Initialize file_results array to link each file to its analysis
+        self.file_results = []
+        
         # Validation du nombre de fichiers
         if len(files) != 5:
             raise ValueError(f"Le test MVIC nécessite exactement 5 images DICOM. Reçu: {len(files)}")
@@ -356,10 +363,16 @@ class MVICTest(BaseTest):
         # Sort by datetime
         files_with_datetime.sort(key=lambda x: x[1])
         
+        # Store filenames for database
+        self.dicom_files = [f[0] for f in files_with_datetime]
+        
         # Log chronological order
         logger.info("Ordre chronologique des fichiers:")
         for i, (filepath, dt) in enumerate(files_with_datetime, 1):
             logger.info(f"  {i}. {os.path.basename(filepath)} - {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # Store database info for each image
+        image_db_data = []
         
         # Traiter chaque fichier
         for i, (filepath, acquisition_date) in enumerate(files_with_datetime, 1):
@@ -377,60 +390,207 @@ class MVICTest(BaseTest):
                 # ========== VALIDATION DE LA TAILLE ==========
                 size_result = self.size_validator.process_image(filepath)
                 
+                dimensions = None
+                size_validation = None
                 if size_result and size_result['dimensions']:
                     dimensions = size_result['dimensions']
-                    validation = size_result['validation']
+                    size_validation = size_result['validation']
                 
                 # ========== VALIDATION DE LA FORME ==========
                 # Generate visualization with dimensions from size validation
                 # Note: Visualization is generated as base64 (no physical file created)
+                logger.info(f"Generating visualization for image {i}: {filename}")
                 viz_base64 = self._generate_visualization_with_dimensions(
                     filepath, 
-                    dimensions if size_result and size_result.get('dimensions') else None,
-                    validation if size_result and size_result.get('validation') else None,
+                    dimensions,
+                    size_validation,
                     i
                 )
+                logger.info(f"Visualization generated: {bool(viz_base64)}, length: {len(viz_base64) if viz_base64 else 0}")
                 
                 # Process without saving PNG files (visualization is generated as base64)
                 shape_result = self.shape_validator.process_image(filepath, save_visualization=False)
                 
+                angle_validation = None
+                angle_data = None
                 if shape_result and shape_result['validation']:
-                    validation = shape_result['validation']
+                    angle_validation = shape_result['validation']
                     angle_data = shape_result['angle_data']
+                
+                # Always add visualization if it was generated (even without angle validation)
+                if viz_base64:
+                    viz_stats = {
+                        'status': 'PASS' if (angle_validation and angle_validation['is_valid'] and 
+                                           size_validation and size_validation['is_valid']) else 'FAIL',
+                        'field_size': f"{dimensions['width_mm']:.2f}x{dimensions['height_mm']:.2f}mm" if dimensions else 'N/A'
+                    }
                     
-                    # Add visualization with base64 encoding (like mlc_leaf_jaw)
-                    if viz_base64:
-                        self.visualizations.append({
-                            'name': f'Image {i}: {filename}',
-                            'type': 'image',
-                            'data': viz_base64,
-                            'filename': filename,
-                            'index': i,
-                            'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
-                            'statistics': {
-                                'status': 'PASS' if validation['is_valid'] and (size_result and size_result['validation']['is_valid']) else 'FAIL',
-                                'field_size': f"{dimensions['width_mm']:.2f}x{dimensions['height_mm']:.2f}mm" if dimensions else 'N/A',
-                                'angles_valid': f"{len([a for a in validation['angles'] if a['is_valid']])}/{len(validation['angles'])}"
-                            }
-                        })
+                    # Add angle stats if available
+                    if angle_validation and 'angles' in angle_validation:
+                        viz_stats['angles_valid'] = f"{len([a for a in angle_validation['angles'] if a['is_valid']])}/{len(angle_validation['angles'])}"
+                    
+                    self.visualizations.append({
+                        'name': f'Image {i}: {filename}',
+                        'type': 'image',
+                        'data': viz_base64,
+                        'filename': filename,
+                        'index': int(i),
+                        'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
+                        'statistics': viz_stats
+                    })
+                    logger.info(f"Added visualization for image {i}")
+                else:
+                    logger.warning(f"No visualization generated for image {i}: {filename}")
+                
+                # Collect data for database
+                if dimensions and angle_data and 'angles' in angle_data:
+                    angles_list = [a['angle'] for a in angle_data['angles']]
+                    
+                    # Extract individual corner angles
+                    # Angles are ordered: top-left, top-right, bottom-left, bottom-right
+                    corner_angles = {
+                        'top_left_angle': float(angles_list[0]) if len(angles_list) > 0 else 90.0,
+                        'top_right_angle': float(angles_list[1]) if len(angles_list) > 1 else 90.0,
+                        'bottom_left_angle': float(angles_list[2]) if len(angles_list) > 2 else 90.0,
+                        'bottom_right_angle': float(angles_list[3]) if len(angles_list) > 3 else 90.0
+                    }
+                    
+                    # Calculate average and std dev from corner angles
+                    corner_angles_list = [corner_angles['top_left_angle'], corner_angles['top_right_angle'], 
+                                         corner_angles['bottom_left_angle'], corner_angles['bottom_right_angle']]
+                    avg_angle = float(np.mean(corner_angles_list))
+                    std_angle = float(np.std(corner_angles_list))
+                    
+                    image_data = {
+                        'width_mm': float(dimensions['width_mm']) if dimensions['width_mm'] is not None else None,
+                        'height_mm': float(dimensions['height_mm']) if dimensions['height_mm'] is not None else None,
+                        'avg_angle': avg_angle,
+                        'angle_std_dev': std_angle,
+                        **corner_angles  # Add individual corner angles
+                    }
+                    image_db_data.append(image_data)
+                    
+                    # Add to file_results for image-to-result mapping
+                    self.file_results.append({
+                        'filename': filename,
+                        'filepath': filepath,
+                        'image_number': i,
+                        'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
+                        'analysis_type': 'Field Size and Shape Validation',
+                        'dimensions': dimensions,
+                        'size_validation': size_validation,
+                        'angle_validation': angle_validation,
+                        'measurements': image_data,
+                        'status': 'PASS' if (size_validation and size_validation['is_valid'] and 
+                                           angle_validation and angle_validation['is_valid']) else 'FAIL'
+                    })
+                else:
+                    # Store None values if data is missing
+                    image_db_data.append({
+                        'width_mm': None,
+                        'height_mm': None,
+                        'avg_angle': None,
+                        'angle_std_dev': None
+                    })
+                    
+                    # Add to file_results even on failure
+                    self.file_results.append({
+                        'filename': filename,
+                        'filepath': filepath,
+                        'image_number': i,
+                        'acquisition_date': acquisition_date.strftime('%Y-%m-%d %H:%M:%S'),
+                        'analysis_type': 'Field Size and Shape Validation',
+                        'status': 'ERROR',
+                        'error': 'Missing dimensions or angle data'
+                    })
                 
             except Exception as e:
                 logger.error(f"Error processing {filename}: {e}")
+                # Store None values on error
+                image_db_data.append({
+                    'width_mm': None,
+                    'height_mm': None,
+                    'avg_angle': None,
+                    'angle_std_dev': None
+                })
         
         # Calculer le résultat global
         self.calculate_overall_result()
         
+        # Note: Database saving is handled by the frontend via API endpoint
+        # The test execution just returns results
+        
         return self.to_dict()
     
     def to_dict(self):
-        """Override to_dict to include visualizations"""
+        """Override to_dict to include visualizations, test_id, filenames, and file_results"""
         result = super().to_dict()
+        
+        # Add filenames at top level for easy database storage
+        if hasattr(self, 'dicom_files') and self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
+        
+        # Add file_results for image-to-result mapping
+        if hasattr(self, 'file_results') and self.file_results:
+            result['file_results'] = self.file_results
         
         # Add visualizations to the output
         if self.visualizations:
             result['visualizations'] = self.visualizations
+            logger.info(f"[MVIC-TO-DICT] Including {len(self.visualizations)} visualizations")
+        else:
+            logger.warning("[MVIC-TO-DICT] No visualizations to include")
         
+        # Add test_id if saved to database
+        if hasattr(self, 'test_id'):
+            result['test_id'] = self.test_id
+        
+        logger.info(f"[MVIC-TO-DICT] Result keys: {list(result.keys())}")
         return result
+    
+    def save_to_database(self, filenames: Optional[List[str]] = None):
+        """
+        Save MVIC test results to database
+        
+        Args:
+            filenames: Optional list of source DICOM filenames
+        
+        Returns:
+            int: Test ID from database
+        """
+        try:
+            from database_helpers import save_mvic_to_database
+            
+            # Prepare results list - one entry per image
+            results_list = []
+            for i in range(1, 6):  # 5 images
+                image_key = f"Image {i}"
+                if image_key in self.results:
+                    img_result = self.results[image_key]
+                    results_list.append({
+                        'top_left_angle': img_result.get('top_left_angle', 0),
+                        'top_right_angle': img_result.get('top_right_angle', 0),
+                        'bottom_left_angle': img_result.get('bottom_left_angle', 0),
+                        'bottom_right_angle': img_result.get('bottom_right_angle', 0),
+                        'height': img_result.get('height', 0),
+                        'width': img_result.get('width', 0)
+                    })
+            
+            test_id = save_mvic_to_database(
+                operator=self.operator,
+                test_date=self.test_date,
+                overall_result=self.overall_result,
+                results=results_list,
+                notes=self.notes,
+                filenames=filenames or self.dicom_files
+            )
+            
+            self.test_id = test_id
+            return test_id
+            
+        except Exception as e:
+            logger.error(f"Error saving MVIC test to database: {e}")
+            raise
     
     def get_form_data(self):
         """
@@ -465,6 +625,13 @@ class MVICTest(BaseTest):
                     'accept': '.dcm',
                     'multiple': True,
                     'description': 'Sélectionner exactement 5 fichiers DICOM (taille et angles détectés automatiquement)'
+                },
+                {
+                    'name': 'notes',
+                    'label': 'Notes:',
+                    'type': 'textarea',
+                    'required': False,
+                    'placeholder': 'Notes additionnelles (optionnel)'
                 }
             ],
             'tolerance': 'Taille: ±1mm, Angles: ±1°',
@@ -475,7 +642,7 @@ class MVICTest(BaseTest):
 def test_mvic(operator: str, files: List[str],
               test_date: Optional[datetime] = None, notes: Optional[str] = None):
     """
-    Fonction utilitaire pour exécuter le test MVIC
+    Fonction utilitaire pour exécuter le test MVIC-Champ
     
     Args:
         operator: Nom de l'opérateur
@@ -486,7 +653,7 @@ def test_mvic(operator: str, files: List[str],
     Returns:
         dict: Résultats du test
     """
-    test = MVICTest()
+    test = MVICChampTest()
     return test.execute(
         files=files,
         operator=operator,

@@ -14,7 +14,7 @@ from pathlib import Path
 class FieldSizeValidator:
     def __init__(self):
         # Detection parameters (from mlc_leaf_and_jaw scripts)
-        self.tolerance_threshold = 255 * 0.5  # Binary threshold at 50%
+        self.tolerance_threshold = 255 * 0.48  # Binary threshold
         self.tolerance_kernel_size = 3  # Morphological operations kernel
         self.min_area = 200  # Minimum contour area in pixels
         self.merge_distance_px = 40  # Distance for merging nearby contours
@@ -261,14 +261,14 @@ class FieldSizeValidator:
             field_height_px = 0
         
         # Convert to mm at isocenter (apply scaling factor)
-        field_width_mm = field_width_px * metadata['pixel_spacing_x'] * metadata['scaling_factor']
-        field_height_mm = field_height_px * metadata['pixel_spacing_y'] * metadata['scaling_factor']
+        field_width_mm = float(field_width_px * metadata['pixel_spacing_x'] * metadata['scaling_factor'])
+        field_height_mm = float(field_height_px * metadata['pixel_spacing_y'] * metadata['scaling_factor'])
         
         return {
             'width_mm': field_width_mm,
             'height_mm': field_height_mm,
-            'width_px': field_width_px,
-            'height_px': field_height_px
+            'width_px': int(field_width_px),
+            'height_px': int(field_height_px)
         }
     
     def validate_field_size(self, dimensions):
@@ -303,12 +303,12 @@ class FieldSizeValidator:
                 return {
                     'is_valid': True,
                     'matched_size': expected['name'],
-                    'expected_width': expected['width'],
-                    'expected_height': expected['height'],
-                    'detected_width': width,
-                    'detected_height': height,
-                    'width_error': width_error_1,
-                    'height_error': height_error_1,
+                    'expected_width': float(expected['width']),
+                    'expected_height': float(expected['height']),
+                    'detected_width': float(width),
+                    'detected_height': float(height),
+                    'width_error': float(width_error_1),
+                    'height_error': float(height_error_1),
                     'message': f'Field size matches {expected["name"]} within tolerance'
                 }
             
@@ -317,12 +317,12 @@ class FieldSizeValidator:
                 return {
                     'is_valid': True,
                     'matched_size': f'{expected["name"]} (rotated)',
-                    'expected_width': expected['height'],
-                    'expected_height': expected['width'],
-                    'detected_width': width,
-                    'detected_height': height,
-                    'width_error': width_error_2,
-                    'height_error': height_error_2,
+                    'expected_width': float(expected['height']),
+                    'expected_height': float(expected['width']),
+                    'detected_width': float(width),
+                    'detected_height': float(height),
+                    'width_error': float(width_error_2),
+                    'height_error': float(height_error_2),
                     'message': f'Field size matches {expected["name"]} (rotated) within tolerance'
                 }
         
@@ -330,8 +330,8 @@ class FieldSizeValidator:
         return {
             'is_valid': False,
             'matched_size': None,
-            'detected_width': width,
-            'detected_height': height,
+            'detected_width': float(width),
+            'detected_height': float(height),
             'width_error': None,
             'height_error': None,
             'message': f'Field size {width:.2f}x{height:.2f}mm does not match any expected size (±{self.size_tolerance}mm tolerance)'

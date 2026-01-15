@@ -1264,12 +1264,39 @@ class MLCLeafJawTest(BaseTest):
         return {'message': 'Single file analysis completed'}
     
     def to_dict(self):
-        """Override to_dict to include visualizations"""
+        """Override to_dict to include visualizations and file results"""
+        import numpy as np
+        
+        def convert_to_json_serializable(obj):
+            """Convert numpy/other types to JSON-serializable Python types"""
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.bool_):
+                return bool(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [convert_to_json_serializable(item) for item in obj]
+            else:
+                return obj
+        
         result = super().to_dict()
+        
+        # Add filenames at top level for easy database storage
+        if self.dicom_files:
+            result['filenames'] = [os.path.basename(f) for f in self.dicom_files]
         
         # Add visualizations to the output
         if self.visualizations:
             result['visualizations'] = self.visualizations
+        
+        # Add file_results for detailed per-image data (convert to JSON-serializable)
+        if hasattr(self, 'file_results'):
+            result['file_results'] = convert_to_json_serializable(self.file_results)
         
         return result
 

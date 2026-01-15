@@ -29,6 +29,20 @@ function displayTestResults(result) {
     } else {
         document.getElementById('testVisualizations').style.display = 'none';
     }
+    
+    // Reset and show the save button for new test
+    const saveBtn = document.getElementById('saveTestBtn');
+    if (saveBtn) {
+        // Reset button state
+        saveBtn.style.display = 'inline-block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Save to Database';
+        saveBtn.className = 'btn btn-success';
+        console.log('Save button reset and shown for new test');
+    }
+    
+    // Store the result for saving later
+    window.CURRENT_TEST_RESULT = result;
 }
 
 function displayVisualizations(visualizations) {
@@ -98,6 +112,13 @@ function nextVisualization() {
 function previousVisualization() {
     if (window.APP_STATE.currentVisualizationIndex > 0) {
         window.APP_STATE.currentVisualizationIndex--;
+        displayCurrentVisualization();
+    }
+}
+
+function nextVisualization() {
+    if (window.APP_STATE.currentVisualizationIndex < window.APP_STATE.allVisualizations.length - 1) {
+        window.APP_STATE.currentVisualizationIndex++;
         displayCurrentVisualization();
     }
 }

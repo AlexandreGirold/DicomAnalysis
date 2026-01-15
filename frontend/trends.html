@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse de Tendances - Quality Control</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Override main.css container to match other pages */
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .section-card h2 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-primary:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .test-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .test-list-table th {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .test-list-table td {
+            padding: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .test-list-table tbody tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .test-list-table tbody tr:hover {
+            background: #e3f2fd;
+            transform: translateX(2px);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-pass { background: #d4edda; color: #155724; }
+        .badge-fail { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h4 {
+            margin-top: 0;
+            color: #007bff;
+        }
+
+        .info-box ul {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analyse de Tendances</h1>
+            <nav>
+                <a href="/" class="nav-link">Tests</a>
+                <a href="/static/review.html" class="nav-link">Revue</a>
+                <a href="/static/trends.html" class="nav-link active">Tendances</a>
+                <a href="/static/config.html" class="nav-link">Config</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Information Box -->
+            <div class="info-box">
+                <h4>📊 À propos de l'Analyse de Tendances</h4>
+                <p>Générez des rapports PDF pour analyser l'évolution des résultats de tests sur une période donnée.</p>
+                <ul>
+                    <li>Graphiques d'évolution des mesures dans le temps</li>
+                    <li>Statistiques et tendances pour chaque paramètre</li>
+                    <li>Identification des dérives systématiques</li>
+                    <li>Export PDF professionnel pour documentation qualité</li>
+                </ul>
+            </div>
+
+            <!-- Configuration Section -->
+            <div class="section-card">
+                <h2>Configuration du Rapport</h2>
+                
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label for="testTypeSelect">Type de Test</label>
+                        <select id="testTypeSelect">
+                            <option value="">-- Sélectionner un type de test --</option>
+                            <!-- Daily -->
+                            <optgroup label="Tests Quotidiens">
+                                <option value="safety_systems" disabled>Systèmes de Sécurité (bientôt disponible)</option>
+                            </optgroup>
+                            <!-- Weekly -->
+                            <optgroup label="Tests Hebdomadaires">
+                                <option value="niveau_helium" disabled>Niveau Helium (bientôt disponible)</option>
+                                <option value="mlc_leaf_jaw" disabled>MLC Leaf & Jaw (bientôt disponible)</option>
+                                <option value="mvic" disabled>MVIC (bientôt disponible)</option>
+                                <option value="mvic_fente_v2" disabled>MVIC Fente (bientôt disponible)</option>
+                                <option value="piqt" disabled>PIQT (bientôt disponible)</option>
+                                <option value="leaf_position">Position des Lames</option>
+                            </optgroup>
+                            <!-- Monthly -->
+                            <optgroup label="Tests Mensuels">
+                                <option value="position_table_v2" disabled>Position Table V2 (bientôt disponible)</option>
+                                <option value="alignement_laser" disabled>Alignement Laser (bientôt disponible)</option>
+                                <option value="quasar" disabled>Quasar (bientôt disponible)</option>
+                                <option value="indice_quality" disabled>Indice Quality (bientôt disponible)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="startDateInput">Date de Début</label>
+                        <input type="date" id="startDateInput">
+                    </div>
+
+                <div class="filter-group">
+                    <label for="endDateInput">Date de Fin</label>
+                    <input type="date" id="endDateInput">
+                </div>
+
+                <div class="filter-group">
+                    <label for="bladeSizeSelect">Taille des Lames (Rapport PDF)</label>
+                    <select id="bladeSizeSelect">
+                        <option value="all">Toutes les tailles</option>
+                        <option value="20mm">20mm</option>
+                        <option value="30mm">30mm</option>
+                        <option value="40mm">40mm</option>
+                    </select>
+                </div>
+            </div>                <div class="action-buttons">
+                    <button class="btn btn-primary" id="loadPreviewBtn" onclick="loadPreview()">
+                        📈 Charger l'Aperçu
+                    </button>
+                    <button class="btn btn-success" id="generatePdfBtn" onclick="generatePDF()" disabled>
+                        📄 Générer le Rapport PDF
+                    </button>
+                    <button class="btn btn-secondary" id="resetBtn" onclick="resetForm()">
+                        🔄 Réinitialiser
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div id="previewSection" class="section-card preview-section">
+                <h2>Aperçu des Données</h2>
+                
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Stats will be inserted here -->
+                </div>
+
+                <div style="margin-top: 25px;">
+                    <h3>Tests Inclus dans le Rapport</h3>
+                    <table class="test-list-table" id="testListTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Opérateur</th>
+                                <th>Résultat</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="testListBody">
+                            <!-- Test rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Chargement des données...</p>
+        </div>
+    </div>
+
+    <script src="/static/js/config.js"></script>
+    <script src="/static/js/trends.js"></script>
+</body>
+</html>
