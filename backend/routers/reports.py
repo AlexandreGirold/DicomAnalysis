@@ -128,6 +128,35 @@ async def get_leaf_position_trend(
             
             logger.info(f"[TREND-REPORT] Found {len(blade_results)} blade measurements")
             
+            # Query image averages for these tests
+            logger.info(f"[TREND-REPORT] Querying image averages for test IDs: {test_ids}")
+            image_records = session.query(db.LeafPositionImage).filter(
+                db.LeafPositionImage.test_id.in_(test_ids)
+            ).all()
+            
+            logger.info(f"[TREND-REPORT] Found {len(image_records)} image records")
+            
+            # Organize images by test
+            images_by_test = {}
+            for img in image_records:
+                if img.test_id not in images_by_test:
+                    images_by_test[img.test_id] = []
+                
+                images_by_test[img.test_id].append({
+                    'image_number': img.image_number,
+                    'identified_image_number': img.identified_image_number,
+                    'filename': img.filename,
+                    'top_average': img.top_average,
+                    'bottom_average': img.bottom_average
+                })
+                
+                top_str = f"{img.top_average:.2f}" if img.top_average is not None else "None"
+                bottom_str = f"{img.bottom_average:.2f}" if img.bottom_average is not None else "None"
+                logger.info(f"[TREND-REPORT] Test {img.test_id}, Image {img.image_number} → Position {img.identified_image_number}: "
+                           f"top={top_str}mm, bottom={bottom_str}mm")
+            
+            logger.info(f"[TREND-REPORT] Organized images: {len(images_by_test)} tests with image data")
+            
             if not blade_results:
                 logger.warning(f"[TREND-REPORT] No blade results found for {len(tests)} tests!")
                 # Check if results exist at all
@@ -168,6 +197,7 @@ async def get_leaf_position_trend(
             response_data = {
                 'tests': test_metadata,
                 'blade_trends': blade_trends,
+                'images_by_test': images_by_test,
                 'summary': {
                     'total_tests': len(tests),
                     'total_blades': len(blade_trends),

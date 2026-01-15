@@ -10,7 +10,7 @@ from database import (
     MLCLeafJawTest,
     NiveauHeliumTest, NiveauHeliumResult,
     PIQTTest, PIQTResult,
-    LeafPositionTest, LeafPositionResult,
+    LeafPositionTest, LeafPositionResult, LeafPositionImage,
     SafetySystemsTest,
     PositionTableV2Test,
     AlignementLaserTest,
@@ -22,6 +22,11 @@ from typing import List, Dict, Any, Optional
 import logging
 import os
 import json
+import sys
+
+# Add services directory to path for leaf_position_identifier
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'services'))
+from leaf_position_identifier import identify_all_images, validate_identification
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +282,9 @@ def save_leaf_position_to_database(
         # Save results for each blade in each image
         logger.info(f"[SAVE-LEAF] Processing blade results - type: {type(results)}")
         
+        # Collect image-level data for identification
+        image_data_for_identification = []
+        
         # Check if results is a dict (old format with file_1_summary keys) or list (blade_results format)
         if isinstance(results, dict):
             logger.info(f"[SAVE-LEAF] Results is a dict with keys: {list(results.keys())}")
@@ -309,7 +317,16 @@ def save_leaf_position_to_database(
                 
                 if image_top_avg is not None or image_bottom_avg is not None:
                     logger.info(f"[SAVE-LEAF] Image {image_idx} averages - Top: {image_top_avg:.2f}mm, Bottom: {image_bottom_avg:.2f}mm")
+                    
+                    # Collect data for identification
+                    image_data_for_identification.append({
+                        'upload_order': image_idx,
+                        'filename': filename,
+                        'top_average': image_top_avg,
+                        'bottom_average': image_bottom_avg
+                    })
                 
+                # Save individual blade results
                 for blade in blades:
                     blade_result = LeafPositionResult(
                         test_id=test.id,
@@ -324,12 +341,32 @@ def save_leaf_position_to_database(
                         length_mm=blade.get('length_mm'),
                         field_size_mm=blade.get('field_size_mm'),
                         is_valid=blade.get('is_valid', 'UNKNOWN'),
-                        status_message=blade.get('status_message'),
-                        blade_top_average=image_top_avg,
-                        blade_bottom_average=image_bottom_avg
+                        status_message=blade.get('status_message')
                     )
                     db.add(blade_result)
-                    logger.info(f"[SAVE-LEAF] Added blade {blade.get('pair')} for test {test.id}")
+            
+            # Identify image positions and save to LeafPositionImage table
+            if image_data_for_identification:
+                logger.info(f"[SAVE-LEAF] Identifying positions for {len(image_data_for_identification)} images")
+                identified_images = identify_all_images(image_data_for_identification)
+                is_valid, errors = validate_identification(identified_images)
+                
+                if not is_valid:
+                    logger.warning(f"[SAVE-LEAF] Image identification validation failed: {errors}")
+                
+                # Save to LeafPositionImage table
+                for img_data in identified_images:
+                    image_record = LeafPositionImage(
+                        test_id=test.id,
+                        image_number=img_data['upload_order'],
+                        identified_image_number=img_data.get('identified_position'),
+                        filename=img_data['filename'],
+                        top_average=img_data['top_average'],
+                        bottom_average=img_data['bottom_average']
+                    )
+                    db.add(image_record)
+                    logger.info(f"[SAVE-LEAF] Saved image {img_data['upload_order']} → Position {img_data.get('identified_position')}")
+                    
         else:
             logger.warning(f"[SAVE-LEAF] Unexpected results type: {type(results)}")
         

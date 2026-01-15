@@ -228,7 +228,9 @@ def delete_indice_quality_test(test_id: int) -> bool:
 # Leaf Position (Weekly)
 def get_all_leaf_position_tests(limit: int = 100, offset: int = 0, 
                                  start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict]:
-    """Get all Leaf Position tests with blade results"""
+    """Get all Leaf Position tests with blade results and image averages"""
+    from .weekly_leaf_position_images import LeafPositionImage
+    
     db = SessionLocal()
     try:
         query = db.query(LeafPositionTest).order_by(desc(LeafPositionTest.test_date))
@@ -246,6 +248,7 @@ def get_all_leaf_position_tests(limit: int = 100, offset: int = 0,
         result = []
         for test in tests:
             test_dict = _test_to_dict(test)
+            
             # Add blade results
             blade_results = db.query(LeafPositionResult).filter(
                 LeafPositionResult.test_id == test.id
@@ -267,15 +270,30 @@ def get_all_leaf_position_tests(limit: int = 100, offset: int = 0,
                 }
                 for br in blade_results
             ]
+            
+            # Add image averages
+            image_records = db.query(LeafPositionImage).filter(
+                LeafPositionImage.test_id == test.id
+            ).all()
+            test_dict['image_averages'] = [
+                {
+                    'image_number': img.image_number,
+                    'identified_image_number': img.identified_image_number,
+                    'filename': img.filename,
+                    'top_average': img.top_average,
+                    'bottom_average': img.bottom_average
+                }
+                for img in image_records
+            ]
+            
             result.append(test_dict)
         
         return result
     finally:
         db.close()
 
-
 def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
-    """Get a Leaf Position test by ID with all blade results"""
+    """Get a Leaf Position test by ID with all blade results and image averages"""
     db = SessionLocal()
     try:
         test = db.query(LeafPositionTest).filter(LeafPositionTest.id == test_id).first()
@@ -285,6 +303,7 @@ def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
         # Force load blade_results BEFORE closing session
         # Access the relationship to trigger loading
         _ = len(test.blade_results)
+        _ = len(test.images)
         
         test_dict = _test_to_dict(test)
         
@@ -305,6 +324,18 @@ def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
                 'status_message': br.status_message
             }
             for br in test.blade_results
+        ]
+        
+        # Add image averages from the images relationship
+        test_dict['image_averages'] = [
+            {
+                'image_number': img.image_number,
+                'identified_image_number': img.identified_image_number,
+                'filename': img.filename,
+                'top_average': img.top_average,
+                'bottom_average': img.bottom_average
+            }
+            for img in test.images
         ]
         
         return test_dict
