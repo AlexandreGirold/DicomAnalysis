@@ -95,23 +95,10 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
         elements = add_summary_table(elements, data, styles)
         elements.append(Spacer(1, 0.3*inch))
         
-        # Test list table
-        elements.append(Paragraph("Liste des Tests Analysés", heading_style))
-        logger.info("[PDF-GENERATOR] Adding test list table")
+        # Matrix table with image averages - ONLY TABLE NEEDED
+        elements.append(Paragraph("Tableau Matriciel des Moyennes par Image", heading_style))
+        logger.info("[PDF-GENERATOR] Adding image averages matrix table")
         elements = add_test_list_table(elements, data)
-        elements.append(PageBreak())
-        
-        # Blade trend graphs
-        elements.append(Paragraph("Graphiques d'Évolution des Lames", heading_style))
-        elements.append(Spacer(1, 0.2*inch))
-        logger.info("[PDF-GENERATOR] Adding blade trend graphs")
-        elements = add_blade_trend_graphs(elements, data)
-        
-        # Statistical analysis table
-        elements.append(PageBreak())
-        elements.append(Paragraph("Analyse Statistique par Lame", heading_style))
-        logger.info("[PDF-GENERATOR] Adding statistics table")
-        elements = add_statistics_table(elements, data)
         
         # Build PDF
         logger.info(f"[PDF-GENERATOR] Building PDF with {len(elements)} elements")
@@ -133,16 +120,15 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
 def add_summary_table(elements, data: Dict[str, Any], styles):
     """Add summary statistics table"""
     tests = data['tests']
-    blade_trends = data['blade_trends']
+    images_by_test = data.get('images_by_test', {})
     
     total_tests = len(tests)
     passed_tests = sum(1 for t in tests if t['overall_result'] == 'PASS')
     failed_tests = total_tests - passed_tests
     pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
     
-    total_blades = len(blade_trends)
-    total_measurements = sum(len(measurements) for measurements in blade_trends.values())
-    avg_measurements = (total_measurements / total_blades) if total_blades > 0 else 0
+    total_images = sum(len(images) for images in images_by_test.values())
+    avg_images_per_test = (total_images / total_tests) if total_tests > 0 else 0
     
     # Create summary table
     summary_data = [
@@ -151,10 +137,8 @@ def add_summary_table(elements, data: Dict[str, Any], styles):
         ['Tests réussis', str(passed_tests)],
         ['Tests échoués', str(failed_tests)],
         ['Taux de réussite', f'{pass_rate:.1f}%'],
-        ['', ''],
-        ['Nombre de lames analysées', str(total_blades)],
-        ['Mesures totales', str(total_measurements)],
-        ['Mesures moyennes par lame', f'{avg_measurements:.1f}'],
+        ['Nombre d\'images analysées', str(total_images)],
+        ['Images moyennes par test', f'{avg_images_per_test:.1f}']
     ]
     
     table = Table(summary_data, colWidths=[4*inch, 2*inch])
@@ -176,53 +160,113 @@ def add_summary_table(elements, data: Dict[str, Any], styles):
 
 
 def add_test_list_table(elements, data: Dict[str, Any]):
-    """Add chronological test list table"""
+    """
+    Add matrix table showing 6 identified images with Top/Bottom averages per test date
+    Rows: Image 1-6 (identified_image_number)
+    Columns: Test dates with Top/Bottom sub-columns
+    Values: blade_top_average and blade_bottom_average
+    """
     tests = data['tests']
+    images_by_test = data.get('images_by_test', {})
     
     # Sort tests by date
     sorted_tests = sorted(tests, key=lambda x: x['test_date'])
     
-    # Create table data
-    table_data = [['ID', 'Date', 'Opérateur', 'Résultat', 'Commentaires']]
+    if not sorted_tests:
+        elements.append(Paragraph("Aucun test disponible", getSampleStyleSheet()['Normal']))
+        return elements
+    
+    logger.info(f"[PDF-TABLE] Processing {len(sorted_tests)} tests")
+    logger.info(f"[PDF-TABLE] Images by test: {len(images_by_test)} test entries")
+    
+    # Build data structure: image_data[test_id][image_num] = {'top': x, 'bottom': y}
+    image_data = {}
+    
+    for test_id, images in images_by_test.items():
+        logger.info(f"[PDF-TABLE] Test {test_id} has {len(images)} images")
+        image_data[test_id] = {}
+        
+        for img in images:
+            img_num = img.get('image_number') or img.get('identified_image_number')
+            top = img.get('top_average')
+            bottom = img.get('bottom_average')
+            
+            logger.info(f"[PDF-TABLE] Test {test_id}, Image {img_num}: top={top}, bottom={bottom}")
+            
+            if img_num is not None:
+                image_data[test_id][img_num] = {
+                    'top': top,
+                    'bottom': bottom
+                }
+    
+    logger.info(f"[PDF-TABLE] Final image_data: {image_data}")
+    
+    # Build table header
+    # Row 1: Test dates (spanning 2 columns each)
+    # Row 2: "Top" and "Bottom" sub-columns
+    header_row1 = ['Image']
+    header_row2 = ['#']
     
     for test in sorted_tests:
-        test_date = datetime.fromisoformat(test['test_date']).strftime('%Y-%m-%d')
-        operator = test['operator'] or 'N/A'
-        result = test['overall_result']
-        notes = (test['notes'][:30] + '...') if test['notes'] and len(test['notes']) > 30 else (test['notes'] or '-')
+        test_date = datetime.fromisoformat(test['test_date']).strftime('%d/%m')
+        header_row1.append(test_date)
+        header_row1.append('')  # Will be spanned
+        header_row2.append('Top')
+        header_row2.append('Bottom')
+    
+    table_data = [header_row1, header_row2]
+    
+    # Add rows for each of the 6 identified images
+    for img_num in range(1, 7):
+        row = [f'Image {img_num}']
         
-        table_data.append([
-            f"#{test['test_id']}",
-            test_date,
-            operator,
-            result,
-            notes
-        ])
+        for test in sorted_tests:
+            test_id = test['test_id']
+            
+            if test_id in image_data and img_num in image_data[test_id]:
+                top_val = image_data[test_id][img_num]['top']
+                bottom_val = image_data[test_id][img_num]['bottom']
+                row.append(f'{top_val:.2f}' if top_val is not None else '-')
+                row.append(f'{bottom_val:.2f}' if bottom_val is not None else '-')
+            else:
+                row.append('-')
+                row.append('-')
+        
+        table_data.append(row)
+    
+    # Calculate column widths
+    num_tests = len(sorted_tests)
+    image_col_width = 0.8 * inch
+    value_col_width = 0.65 * inch  # Width for each Top/Bottom value
+    
+    col_widths = [image_col_width] + [value_col_width] * (num_tests * 2)
     
     # Create table
-    table = Table(table_data, colWidths=[0.6*inch, 1.2*inch, 1.5*inch, 1.2*inch, 2.5*inch])
+    table = Table(table_data, colWidths=col_widths)
     
-    # Style table
+    # Build table style
     style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        # Header styling
+        ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, 0), (-1, 1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 1), 8),
+        ('TOPPADDING', (0, 0), (-1, 1), 8),
+        # Data rows styling
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
-        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ROWBACKGROUNDS', (0, 2), (-1, -1), [colors.white, colors.lightgrey]),
+        ('FONTSIZE', (0, 2), (-1, -1), 7),
+        ('FONTNAME', (0, 2), (0, -1), 'Helvetica-Bold'),  # Bold image numbers
     ])
     
-    # Color-code results
-    for i, test in enumerate(sorted_tests, start=1):
-        if test['overall_result'] == 'PASS':
-            style.add('BACKGROUND', (3, i), (3, i), colors.HexColor('#d4edda'))
-            style.add('TEXTCOLOR', (3, i), (3, i), colors.HexColor('#155724'))
-        elif test['overall_result'] == 'FAIL':
-            style.add('BACKGROUND', (3, i), (3, i), colors.HexColor('#f8d7da'))
-            style.add('TEXTCOLOR', (3, i), (3, i), colors.HexColor('#721c24'))
+    # Span date cells across Top/Bottom columns in first header row
+    for i, test in enumerate(sorted_tests):
+        col_start = 1 + (i * 2)
+        col_end = col_start + 1
+        style.add('SPAN', (col_start, 0), (col_end, 0))
     
     table.setStyle(style)
     elements.append(table)

@@ -31,6 +31,9 @@ def _test_to_dict(test) -> Dict:
             if value is not None and not callable(value):
                 if isinstance(value, datetime):
                     result[key] = value.isoformat()
+                elif isinstance(value, list) and len(value) > 0 and hasattr(value[0], '__table__'):
+                    # Skip lists of relationship objects (e.g., blade_results, images)
+                    continue
                 elif not hasattr(value, '__table__'):  # Skip relationship objects
                     result[key] = value
     

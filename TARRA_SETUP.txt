@@ -1,0 +1,36 @@
+# TARRA - Guide d'utilisation
+
+## Pour les utilisateurs
+
+### Lancer l'application
+1. Double-cliquer sur TARRA.bat
+2. Attendre 2 secondes → le navigateur s'ouvre automatiquement
+3. C'est tout!
+
+### Fermer l'application
+- Fermer toutes les fenêtres du navigateur
+- OU appuyer sur Ctrl+C dans la fenêtre noire (si visible)
+
+### En cas de problème
+Si le message "Python n'est pas installé" apparaît:
+→ Contactez le support technique
+
+---
+
+## Pour le support technique
+
+### Installation initiale (automatique au premier lancement)
+Le script TARRA.bat fait automatiquement:
+- Création de l'environnement virtuel Python
+- Installation des dépendances
+- Création des dossiers nécessaires
+- Lancement du serveur
+- Ouverture du navigateur
+
+### Prérequis
+- Python 3.8+ installé sur le poste
+- Connexion internet pour la première installation
+
+### Accès réseau
+Le serveur écoute sur 0.0.0.0:8000
+Accessible depuis d'autres ordinateurs via: http://IP-DU-SERVEUR:8000

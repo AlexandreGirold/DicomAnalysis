@@ -296,42 +296,71 @@ async function generatePDF() {
     showLoading(true, 'Génération du PDF en cours...');
     
     try {
-        // Extract test IDs from current data
-        const testIds = currentTrendData.tests.map(test => test.test_id);
-        console.log('Generating PDF for test IDs:', testIds);
+        let url, filename;
         
-        // Get blade size filter from UI
-        const bladeSizeSelect = document.getElementById('bladeSizeSelect');
-        const bladeSize = bladeSizeSelect ? bladeSizeSelect.value : 'all';
-        console.log('Blade size filter:', bladeSize);
-        
-        // Build URL with test_ids as query parameters
-        const params = new URLSearchParams();
-        testIds.forEach(id => params.append('test_ids', id));
-        params.append('blade_size', bladeSize);
-        
-        const url = `${window.APP_CONFIG.API_BASE_URL}/reports/mlc-blade-compliance?${params.toString()}`;
-        console.log('Fetching PDF from:', url);
-        
-        const response = await fetch(url, {
-            method: 'POST'
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        // Route based on test type
+        if (testType === 'leaf_position') {
+            // Use the leaf-position-trend endpoint with format=pdf
+            url = `${window.APP_CONFIG.API_BASE_URL}/reports/leaf-position-trend?start_date=${startDate}&end_date=${endDate}&format=pdf`;
+            filename = `leaf_position_trend_${startDate}_${endDate}.pdf`;
+            console.log('Generating LeafPosition trend PDF from:', url);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            // Download PDF
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+            
+        } else {
+            // Default: MLC blade compliance report
+            const testIds = currentTrendData.tests.map(test => test.test_id);
+            console.log('Generating PDF for test IDs:', testIds);
+            
+            // Get blade size filter from UI
+            const bladeSizeSelect = document.getElementById('bladeSizeSelect');
+            const bladeSize = bladeSizeSelect ? bladeSizeSelect.value : 'all';
+            console.log('Blade size filter:', bladeSize);
+            
+            // Build URL with test_ids as query parameters
+            const params = new URLSearchParams();
+            testIds.forEach(id => params.append('test_ids', id));
+            params.append('blade_size', bladeSize);
+            
+            url = `${window.APP_CONFIG.API_BASE_URL}/reports/mlc-blade-compliance?${params.toString()}`;
+            console.log('Fetching PDF from:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            // Download PDF
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `rapport_mlc_${startDate}_${endDate}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
         }
-        
-        // Download PDF
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `rapport_mlc_${startDate}_${endDate}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(downloadUrl);
-        document.body.removeChild(a);
         
         alert('Rapport PDF généré avec succès !');
         

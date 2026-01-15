@@ -49,7 +49,7 @@ class MLCBladeReportGenerator:
         self._setup_custom_styles()
     
     def _setup_custom_styles(self):
-        dd(ParagraphStyle(
+        self.styles.add(ParagraphStyle(
             name='ReportTitle',
             parent=self.styles['Heading1'],
             fontSize=26,

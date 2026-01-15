@@ -13,6 +13,8 @@ from .weekly_tests import (
     PIQTTest, PIQTResult,
     LeafPositionTest, LeafPositionResult
 )
+# Import LeafPositionImage from its own module
+from .weekly_leaf_position_images import LeafPositionImage
 from .monthly_tests import (
     PositionTableV2Test, PositionTableV2Result,
     AlignementLaserTest, AlignementLaserResult,
@@ -57,7 +59,7 @@ __all__ = [
     'MVICTest', 'MVICResult',
     'MVICFenteV2Test', 'MVICFenteV2Result',
     'PIQTTest', 'PIQTResult',
-    'LeafPositionTest', 'LeafPositionResult',
+    'LeafPositionTest', 'LeafPositionResult', 'LeafPositionImage',
     # Monthly
     'PositionTableV2Test', 'PositionTableV2Result',
     'AlignementLaserTest', 'AlignementLaserResult',

@@ -1,0 +1,52 @@
+Quel est l'objectif final de mon stage ?
+Au début de mon stage, l'objectif était la réalisation d'un plugin en Java et XML pour la plateforme AQUA.
+ Cependant, assez rapidement, plusieurs difficultés sont apparues. Il n'y avait pas de documentation (et l'entreprise ELEKTA, ne répondait que 1 fois par semaine à mes relances). Ne disposant pas des droits d'accès nécessaires pour travailler correctement sur la plateforme, à cause de mon statut de stagiaire (la DSI ne voulant pas me donner les droits d'accès). Cela rendait la compréhension du projet très compliquée et empêchait une réelle avancée.
+Après environ un mois et demi, un changement d'objectif a donc été décidé avec mes maîtres de stage afin d'éviter de rester bloqué sur un projet impossible à mener dans de bonnes conditions.
+Après ce pivot, le nouvel objectif du stage était de développer une application web permettant de tester et d'analyser des images DICOM.
+ Le DICOM signifie Digital Imaging and Communications in Medicine. Ce standard a été créé en 1985 par l'ACR et la NEMA afin de standardiser les données échangées entre les appareils de radiologie. Il définit à la fois un format de fichier et un protocole de transmission des données basé sur TCP/IP.
+Avec mes maîtres de stage, nous avons défini les différents objectifs que devait avoir l'application son utilisation et par qui. L'application devait permettre la visualisation et l'analyse d'images DICOM avec différents types de tests. Elle devait aussi proposer une interface simple et intuitive afin de faciliter son utilisation par tout type de personne pas forcément à l'aise avec l'informatique. Un autre objectif était de pouvoir suivre les résultats des tests dans le temps, avec la possibilité de créer des rapports mensuels. Enfin, une base de données devait être mise en place pour stocker les résultats.
+
+Qu'existait-il auparavant et qu'ai-je concrètement produit ?
+Avant le début du projet, il n'existait que le logiciel AQUA, avec pas mal de fonctionnalité plus avancé que ce que j'ai. Mais sans documentation et d'ecxmple il est tres compliqué de développé des plugins.
+Ce logiciel m'a permis de transférer certains tests vers mon application afin de pouvoir comparer les résultats et vérifier leur cohérence.
+Au cours du stage, j'ai développé une application web complète, en partant de zéro.
+ J'ai mis en place l'ensemble des fonctionnalités nécessaires au bon fonctionnement de l'outil.
+Les principales réalisations sont :
+le développement d'une application web backend avec FastAPI (Python) et frontend en HTML/JavaScript vanilla,
+
+un système de traitement DICOM utilisant PyDicom capable d'analyser les images IRM et d'extraire les métadonnées médicales (pas d'imagerie de patients),
+
+une interface utilisateur responsive accessible via navigateur web,
+
+une base de données SQLite structurée avec SQLAlchemy ORM pour stocker l'historique des tests quotidiens, hebdomadaires et mensuels,
+SQLAlchemy est vraiment utile pour simplifier la création de la base de données, permet l'auto-complétion et type-safe, code plus clair et plus simple à lire (human-readable),
+
+une API REST avec endpoints dédiés pour chaque type de test (MVIC, MLC, PIQT, etc.),
+
+un système de génération de rapports PDF avec ReportLab et de visualisations graphiques avec Matplotlib,
+
+une documentation technique complète et des guides d'utilisation pour faciliter la maintenance et l'évolution du projet.
+
+Sur qui et quoi puis-je m'appuyer ?
+Durant mon stage, j'ai pu m'appuyer sur plusieurs ressources humaines et techniques.
+Sur le plan humain, mes maîtres de stage ont joué un rôle important. Ils validaient les choix techniques et fonctionnels et réalisaient des revues de code régulières.
+ J'ai également échangé avec l'équipe médicale, qui m'a aidé à définir les besoins métier et à comprendre l'utilisation concrète de l'application.
+Les échanges avec mes maîtres de stage étaient primordiaux car ils étaient aussi les clients du logiciel. Cela m'a permis de développer une application répondant réellement à leurs attentes.
+Sur le plan technique, je me suis appuyé sur une stack Python moderne composée de FastAPI, SQLAlchemy et PyDicom.
+ J'ai utilisé des bibliothèques scientifiques spécialisées comme NumPy et SciPy pour les calculs mathématiques, Matplotlib pour les visualisations graphiques, et ReportLab pour la génération de rapports PDF.
+ J'ai également utilisé des outils de développement comme Git pour le versioning du code et VS Code comme environnement de développement.
+ La documentation du standard DICOM, de FastAPI et des différentes bibliothèques Python m'a beaucoup aidé dans la compréhension et l'implémentation des fonctionnalités.
+
+Analyse des acteurs, des utilisateurs et de leurs interactions avec la solution
+Les utilisateurs finaux de l'application sont principalement des manipulateurs en radiologie et des physiciens médicaux.
+ Il n'existe actuellement pas de gestion des accès, car le logiciel est utilisé uniquement en interne et ne nécessite pas encore de droits spécifiques.
+L'objectif principal de l'interaction avec l'application est d'être simple et intuitive. Les utilisateurs doivent pouvoir analyser les images rapidement sans avoir besoin d'une formation complexe.
+Pour effectuer des modifications sur l'application, il est nécessaire d'utiliser la documentation fournie et de maîtriser le langage Python ainsi que les bases du HTML et JavaScript.
+ Le projet peut être repris par un futur stagiaire, ce qui permet d'assurer la continuité et l'évolution de l'application.
+
+3.	Travail effectué, compte rendu d'activité, interprétation et critique des résultats
+
+3.1.	XML et Aqua
+
+Au debut de mon stage, ma mission semblait simple. Rendre l'outil de test « AQUA » forunir par Elekta le constructeur du UNITY. Cela semblait simple, implementer de nouveau test en XML, pourtant dès le debut je me suis confronté a de nombreux soucis et problématique nouvelle. 
+Du fait de notre situation un peu particulière ou, mes maitres de stages physiciens et pas informaticiens sont aussi mes clients et n'etant pas formé sur la comment est créer l'outil AQUA. N'avait pas pris en compte que la création de plugin pour des taches plus compliqué était necessaire. Cependent je m'en voyais réjouis car cela impliqué une nouvelle technologie et un nouveau langage, dans mon cas JAVA. J'ai donc commencé a essayer d'implementé un nouveau plugin, avec une documentation extremement fournir de exactement 3 pages. Apres avoir cependant créer une ebauche de plugin, j'ai été confronté à mon deuxième probleme la DSI (direction des systemes informatiques).

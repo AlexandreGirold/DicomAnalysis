@@ -363,3 +363,4 @@ vite.config.ts.timestamp-*
 *.png
 *.db
 *.pdf
+*.docx

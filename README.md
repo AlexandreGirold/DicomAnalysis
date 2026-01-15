@@ -41,6 +41,7 @@ This web application analyzes DICOM files to determine MLC (Multi-Leaf Collimato
 1. Install Python dependencies:
 ```bash
 cd backend
+.\env\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 

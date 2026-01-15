@@ -180,7 +180,7 @@ async def get_leaf_position_trend(
             
             if format == 'pdf':
                 # Generate PDF report
-                from services.pdf_report_generator import generate_leaf_position_pdf
+                from services.pdf_generators.leaf_position_generator import generate_leaf_position_pdf
                 pdf_bytes = generate_leaf_position_pdf(response_data)
                 
                 return Response(

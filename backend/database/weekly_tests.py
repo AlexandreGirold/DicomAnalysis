@@ -200,6 +200,7 @@ class LeafPositionTest(Base):
     file_results = Column(Text, nullable=True)
     
     blade_results = relationship("LeafPositionResult", backref="test", lazy="joined")
+    images = relationship("LeafPositionImage", back_populates="test", lazy="joined")
 
 
 class LeafPositionResult(Base):
@@ -219,3 +220,7 @@ class LeafPositionResult(Base):
     field_size_mm = Column(Float, nullable=True)
     is_valid = Column(String, nullable=False)
     status_message = Column(Text, nullable=True)
+    blade_top_average = Column(Float, nullable=True)
+    blade_bottom_average = Column(Float, nullable=True)
+    blade_top_average = Column(Float, nullable=True)
+    blade_bottom_average = Column(Float, nullable=True)
