@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_pdf import PdfPages
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm, inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image, PageTemplate, Frame, BaseDocTemplate
 from reportlab.pdfgen import canvas
 from io import BytesIO
 
@@ -44,18 +44,9 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
     # Create PDF in memory
     buffer = BytesIO()
     
-    # Create PDF document
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=1*cm,
-        leftMargin=1*cm,
-        topMargin=1.5*cm,
-        bottomMargin=1.5*cm
-    )
-    
-    # Container for PDF elements
-    elements = []
+    # Create story elements
+    portrait_elements = []
+    landscape_elements = []
     styles = getSampleStyleSheet()
     
     # Custom styles
@@ -78,35 +69,81 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
     )
     
     try:
-        # Title Page
-        elements.append(Paragraph("Rapport d'Analyse de Tendances", title_style))
-        elements.append(Paragraph("Position des Lames", styles['Heading2']))
-        elements.append(Spacer(1, 0.3*inch))
+        # Portrait Section: Title and Summary
+        portrait_elements.append(Paragraph("Rapport d'Analyse de Tendances", title_style))
+        portrait_elements.append(Paragraph("Position des Lames", styles['Heading2']))
+        portrait_elements.append(Spacer(1, 0.75*cm))
         
         # Date range
         date_range = data['summary']['date_range']
         date_text = f"<b>Période:</b> {date_range['start']} au {date_range['end']}"
-        elements.append(Paragraph(date_text, styles['Normal']))
-        elements.append(Spacer(1, 0.2*inch))
+        portrait_elements.append(Paragraph(date_text, styles['Normal']))
+        portrait_elements.append(Spacer(1, 0.5*cm))
         
         # Summary statistics table
-        elements.append(Paragraph("Résumé de l'Analyse", heading_style))
+        portrait_elements.append(Paragraph("Résumé de l'Analyse", heading_style))
         logger.info("[PDF-GENERATOR] Adding summary table")
-        elements = add_summary_table(elements, data, styles)
-        elements.append(Spacer(1, 0.3*inch))
+        portrait_elements = add_summary_table(portrait_elements, data, styles)
+        portrait_elements.append(Spacer(1, 0.75*cm))
         
-        # Matrix table with image averages - ONLY TABLE NEEDED
-        elements.append(Paragraph("Tableau Matriciel des Moyennes par Image", heading_style))
-        logger.info("[PDF-GENERATOR] Adding image averages matrix table")
-        elements = add_test_list_table(elements, data)
+        # Build portrait section
+        portrait_doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=1*cm,
+            leftMargin=1*cm,
+            topMargin=1.5*cm,
+            bottomMargin=1.5*cm
+        )
+        portrait_doc.build(portrait_elements)
         
-        # Build PDF
-        logger.info(f"[PDF-GENERATOR] Building PDF with {len(elements)} elements")
-        doc.build(elements)
+        # Now create landscape section for table
+        landscape_buffer = BytesIO()
+        landscape_doc = SimpleDocTemplate(
+            landscape_buffer,
+            pagesize=landscape(A4),
+            rightMargin=1*cm,
+            leftMargin=1*cm,
+            topMargin=1*cm,
+            bottomMargin=1*cm
+        )
         
-        # Get PDF bytes
-        pdf_bytes = buffer.getvalue()
+        # Matrix table with image averages - LANDSCAPE
+        landscape_elements.append(Paragraph("Tableau Matriciel des Moyennes par Image", heading_style))
+        logger.info("[PDF-GENERATOR] Adding image averages matrix table in landscape")
+        landscape_elements = add_test_list_table(landscape_elements, data)
+        
+        # Build landscape section
+        landscape_doc.build(landscape_elements)
+        
+        # Merge PDFs (portrait + landscape)
+        from PyPDF2 import PdfMerger, PdfReader
+        
+        merger = PdfMerger()
+        
+        # Add portrait pages
+        buffer.seek(0)
+        merger.append(PdfReader(buffer))
+        
+        # Add images page showing the 6 positions BEFORE tables
+        images_buffer = add_images_page(data)
+        if images_buffer:
+            merger.append(PdfReader(images_buffer))
+        
+        # Add landscape page
+        landscape_buffer.seek(0)
+        merger.append(PdfReader(landscape_buffer))
+        
+        # Write merged PDF
+        final_buffer = BytesIO()
+        merger.write(final_buffer)
+        merger.close()
+        
         buffer.close()
+        landscape_buffer.close()
+        
+        pdf_bytes = final_buffer.getvalue()
+        final_buffer.close()
         
         logger.info(f"[PDF-GENERATOR] Generated PDF with {len(pdf_bytes)} bytes")
         return pdf_bytes
@@ -138,10 +175,9 @@ def add_summary_table(elements, data: Dict[str, Any], styles):
         ['Tests échoués', str(failed_tests)],
         ['Taux de réussite', f'{pass_rate:.1f}%'],
         ['Nombre d\'images analysées', str(total_images)],
-        ['Images moyennes par test', f'{avg_images_per_test:.1f}']
     ]
     
-    table = Table(summary_data, colWidths=[4*inch, 2*inch])
+    table = Table(summary_data, colWidths=[10*cm, 5*cm])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -161,10 +197,12 @@ def add_summary_table(elements, data: Dict[str, Any], styles):
 
 def add_test_list_table(elements, data: Dict[str, Any]):
     """
-    Add matrix table showing 6 identified images with Top/Bottom averages per test date
-    Rows: Image 1-6 (identified_image_number)
-    Columns: Test dates with Top/Bottom sub-columns
-    Values: blade_top_average and blade_bottom_average
+    Add two matrix tables showing 6 positions with Y2/Y1 averages per test date
+    - Top table: Y2 (top) values
+    - Bottom table: Y1 (bottom) values
+    Rows: Position 1-6 with reference ranges
+    Columns: Test dates
+    Values: blade_top_average (Y2) and blade_bottom_average (Y1)
     """
     tests = data['tests']
     images_by_test = data.get('images_by_test', {})
@@ -201,77 +239,224 @@ def add_test_list_table(elements, data: Dict[str, Any]):
     
     logger.info(f"[PDF-TABLE] Final image_data: {image_data}")
     
-    # Build table header
-    # Row 1: Test dates (spanning 2 columns each)
-    # Row 2: "Top" and "Bottom" sub-columns
-    header_row1 = ['Image']
-    header_row2 = ['#']
+    # Define position reference ranges
+    position_ranges_y2 = [
+        "40mm",
+        "30mm",
+        "20mm",
+        "0mm",
+        "−10mm",
+        "−20mm"
+    ]
+
+    position_ranges_y1 = [
+        "20mm",
+        "10mm",
+        "0mm",
+        "−20mm",
+        "−30mm",
+        "−40mm"
+    ]
     
+    elements.append(Paragraph("Y2 (Lame Supérieure)", getSampleStyleSheet()['Heading3']))
+    elements.append(Spacer(1, 0.3*cm))
+    
+    y2_header = ['Position', 'Référence']
     for test in sorted_tests:
         test_date = datetime.fromisoformat(test['test_date']).strftime('%d/%m')
-        header_row1.append(test_date)
-        header_row1.append('')  # Will be spanned
-        header_row2.append('Top')
-        header_row2.append('Bottom')
+        y2_header.append(test_date)
     
-    table_data = [header_row1, header_row2]
+    y2_table_data = [y2_header]
     
-    # Add rows for each of the 6 identified images
     for img_num in range(1, 7):
-        row = [f'Image {img_num}']
+        row = [f'Position {img_num}', position_ranges_y2[img_num - 1]]
         
         for test in sorted_tests:
             test_id = test['test_id']
             
             if test_id in image_data and img_num in image_data[test_id]:
                 top_val = image_data[test_id][img_num]['top']
-                bottom_val = image_data[test_id][img_num]['bottom']
                 row.append(f'{top_val:.2f}' if top_val is not None else '-')
+            else:
+                row.append('-')
+        
+        y2_table_data.append(row)
+    
+    # Calculate column widths for Y2 table
+    num_tests = len(sorted_tests)
+    position_col_width = 2.0 * cm
+    reference_col_width = 2.5 * cm
+    value_col_width = 1.8 * cm
+    
+    y2_col_widths = [position_col_width, reference_col_width] + [value_col_width] * num_tests
+    
+    # Create Y2 table
+    y2_table = Table(y2_table_data, colWidths=y2_col_widths)
+    
+    y2_style = TableStyle([
+        # Header styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        # Data rows styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Bold position numbers
+    ])
+    
+    y2_table.setStyle(y2_style)
+    elements.append(y2_table)
+    elements.append(Spacer(1, 1*cm))
+    
+    # Build Y1 (Bottom) Table
+    elements.append(Paragraph("Y1 (Lame Inférieure)", getSampleStyleSheet()['Heading3']))
+    elements.append(Spacer(1, 0.3*cm))
+    
+    # Y1 Table header
+    y1_header = ['Position', 'Référence']
+    for test in sorted_tests:
+        test_date = datetime.fromisoformat(test['test_date']).strftime('%d/%m')
+        y1_header.append(test_date)
+    
+    y1_table_data = [y1_header]
+    
+    # Add rows for each of the 6 positions (Y1 values)
+    for img_num in range(1, 7):
+        row = [f'Position {img_num}', position_ranges_y1[img_num - 1]]
+        
+        for test in sorted_tests:
+            test_id = test['test_id']
+            
+            if test_id in image_data and img_num in image_data[test_id]:
+                bottom_val = image_data[test_id][img_num]['bottom']
                 row.append(f'{bottom_val:.2f}' if bottom_val is not None else '-')
             else:
                 row.append('-')
-                row.append('-')
         
-        table_data.append(row)
+        y1_table_data.append(row)
     
-    # Calculate column widths
-    num_tests = len(sorted_tests)
-    image_col_width = 0.8 * inch
-    value_col_width = 0.65 * inch  # Width for each Top/Bottom value
+    # Create Y1 table with same column widths
+    y1_table = Table(y1_table_data, colWidths=y2_col_widths)
     
-    col_widths = [image_col_width] + [value_col_width] * (num_tests * 2)
-    
-    # Create table
-    table = Table(table_data, colWidths=col_widths)
-    
-    # Build table style
-    style = TableStyle([
+    y1_style = TableStyle([
         # Header styling
-        ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#007bff')),
-        ('TEXTCOLOR', (0, 0), (-1, 1), colors.whitesmoke),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, 1), 8),
-        ('TOPPADDING', (0, 0), (-1, 1), 8),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         # Data rows styling
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ROWBACKGROUNDS', (0, 2), (-1, -1), [colors.white, colors.lightgrey]),
-        ('FONTSIZE', (0, 2), (-1, -1), 7),
-        ('FONTNAME', (0, 2), (0, -1), 'Helvetica-Bold'),  # Bold image numbers
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Bold position numbers
     ])
     
-    # Span date cells across Top/Bottom columns in first header row
-    for i, test in enumerate(sorted_tests):
-        col_start = 1 + (i * 2)
-        col_end = col_start + 1
-        style.add('SPAN', (col_start, 0), (col_end, 0))
-    
-    table.setStyle(style)
-    elements.append(table)
+    y1_table.setStyle(y1_style)
+    elements.append(y1_table)
     
     return elements
+
+
+def add_images_page(data: Dict[str, Any]) -> BytesIO:
+    """
+    Create a page showing the 6 DICOM images from the 13-11-2025 folder
+    
+    Returns:
+        BytesIO: PDF buffer with the images page
+    """
+    import pydicom
+    import os
+    
+    # Hardcoded path to the images folder
+    images_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+        'uploads', 
+        'AQUA-Exactitude', 
+        '13-11-2025'
+    )
+    
+    logger.info(f"[PDF-IMAGES] Loading images from: {images_dir}")
+    
+    if not os.path.exists(images_dir):
+        logger.warning(f"[PDF-IMAGES] Directory not found: {images_dir}")
+        return None
+    
+    # Get all DICOM files and sort them
+    dcm_files = sorted([f for f in os.listdir(images_dir) if f.endswith('.dcm')])
+    
+    if len(dcm_files) < 6:
+        logger.warning(f"[PDF-IMAGES] Not enough DICOM files found: {len(dcm_files)}")
+        return None
+    
+    logger.info(f"[PDF-IMAGES] Found {len(dcm_files)} DICOM files")
+    
+    # Create matplotlib figure with 3x2 grid
+    fig, axes = plt.subplots(3, 2, figsize=(11, 8.5))
+    axes = axes.flatten()
+    
+    # Load and display the first 6 DICOM images
+    for idx in range(6):
+        ax = axes[idx]
+        dcm_path = os.path.join(images_dir, dcm_files[idx])
+        
+        logger.info(f"[PDF-IMAGES] Loading image {idx + 1}: {dcm_files[idx]}")
+        
+        try:
+            # Load DICOM image
+            ds = pydicom.dcmread(dcm_path)
+            image = ds.pixel_array
+            
+            # Display image without inversion
+            ax.imshow(image, cmap='gray')
+            ax.set_title(f'Position {idx + 1}', fontsize=12, fontweight='bold')
+            ax.axis('off')
+            
+            logger.info(f"[PDF-IMAGES] Successfully loaded image {idx + 1}")
+        except Exception as e:
+            logger.error(f"[PDF-IMAGES] Error loading image {idx + 1} from {dcm_path}: {e}")
+            ax.text(0.5, 0.5, 'Erreur de chargement', ha='center', va='center', transform=ax.transAxes)
+            ax.set_title(f'Position {idx + 1}', fontsize=12, fontweight='bold')
+            ax.axis('off')
+    
+    plt.suptitle('Images DICOM - 13-11-2025', fontsize=14, fontweight='bold', y=0.98)
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    
+    # Save figure to buffer
+    img_buffer = BytesIO()
+    fig.savefig(img_buffer, format='png', dpi=120, bbox_inches='tight')
+    img_buffer.seek(0)
+    plt.close(fig)
+    
+    # Create PDF page with the images
+    images_pdf_buffer = BytesIO()
+    images_doc = SimpleDocTemplate(
+        images_pdf_buffer,
+        pagesize=landscape(A4),
+        rightMargin=1*cm,
+        leftMargin=1*cm,
+        topMargin=1*cm,
+        bottomMargin=1*cm
+    )
+    
+    images_elements = []
+    images_img = Image(img_buffer, width=26*cm, height=18*cm)
+    images_elements.append(images_img)
+    
+    images_doc.build(images_elements)
+    images_pdf_buffer.seek(0)
+    
+    logger.info("[PDF-IMAGES] Images page created successfully")
+    return images_pdf_buffer
 
 
 def add_blade_trend_graphs(elements, data: Dict[str, Any]):
@@ -366,9 +551,9 @@ def add_blade_trend_graphs(elements, data: Dict[str, Any]):
         img_buffer.seek(0)
         
         # Add image to PDF
-        img = Image(img_buffer, width=7*inch, height=9.5*inch)
+        img = Image(img_buffer, width=17.5*cm, height=24*cm)
         elements.append(img)
-        elements.append(Spacer(1, 0.2*inch))
+        elements.append(Spacer(1, 0.5*cm))
         
         if i + 6 < len(blade_pairs):  # Add page break if more blades to come
             elements.append(PageBreak())
@@ -423,7 +608,7 @@ def add_statistics_table(elements, data: Dict[str, Any]):
         else:
             chunk_data = [table_data[0]] + table_data[chunk_start + 1:chunk_end]
         
-        table = Table(chunk_data, colWidths=[0.8*inch, 1*inch, 1*inch, 1.2*inch, 1*inch, 1*inch, 1*inch])
+        table = Table(chunk_data, colWidths=[2*cm, 2.5*cm, 2.5*cm, 3*cm, 2.5*cm, 2.5*cm, 2.5*cm])
         
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#007bff')),

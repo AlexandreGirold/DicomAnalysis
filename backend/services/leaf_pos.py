@@ -543,8 +543,8 @@ class MLCBladeAnalyzer:
         print("\n--- Section 3-A: Blades from pair 41 to 54 ---")
         results_a, detected_points_a = self.analyze_blade_positions(
             edges,
-            start_u=511,
-            end_u=511 + (54 - 41 + 1) * self.blade_width_pixels,  
+            start_u=self.center_u,
+            end_u=self.center_u + (54 - 41 + 1) * self.blade_width_pixels,  
             step=self.blade_width_pixels,
             initial_pair=41
         )
@@ -553,8 +553,8 @@ class MLCBladeAnalyzer:
         print("\n--- Section 3-B: Blades from pair 40 to 27 ---")
         results_b, detected_points_b = self.analyze_blade_positions(
             edges,
-            start_u=511 - self.blade_width_pixels,  # Start at blade 40 position (one blade to the left of 41)
-            end_u=511 - self.blade_width_pixels - (40 - 27 + 1) * self.blade_width_pixels,
+            start_u=self.center_u - self.blade_width_pixels,  # Start at blade 40 position (one blade to the left of 41)
+            end_u=self.center_u - self.blade_width_pixels - (40 - 27 + 1) * self.blade_width_pixels,
             step=-self.blade_width_pixels,
             initial_pair=40
         )

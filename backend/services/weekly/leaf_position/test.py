@@ -71,6 +71,30 @@ class LeafPositionTest(BaseTest):
             logger.warning(f"Could not extract acquisition date from {filepath}: {e}")
             return None
     
+    def _get_analysis_type(self, image_number, total_images):
+        """Determine analysis type based on image position in sequence"""
+        # For 6-image leaf position test:
+        # Image 1: Center Detection
+        # Image 2: Jaw Position
+        # Image 3: Leaf Position
+        # Image 4: Leaf Position
+        # Image 5: Blade Straightness
+        # Image 6: Leaf Position
+        if image_number == 1:
+            return 'Center Detection'
+        elif image_number == 2:
+            return 'Jaw Position'
+        elif image_number == 3:
+            return 'Leaf Position'
+        elif image_number == 4:
+            return 'Leaf Position'
+        elif image_number == 5:
+            return 'Blade Straightness'
+        elif image_number == 6:
+            return 'Leaf Position'
+        else:
+            return 'Leaf Position'
+    
     def get_form_data(self):
         """Return form configuration for this test"""
         return {
@@ -156,6 +180,17 @@ class LeafPositionTest(BaseTest):
                 # Extract acquisition date from DICOM
                 acquisition_date = self._get_dicom_acquisition_date(filepath)
                 display_name = acquisition_date if acquisition_date else filename
+                
+                # Determine analysis type based on file position
+                analysis_type = self._get_analysis_type(file_index, len(files))
+                
+                # Add image info result - this displays in the results section
+                self.add_result(
+                    name=f"image_{file_index}_info",
+                    value=f"{filename} | Acquisition: {acquisition_date if acquisition_date else 'Unknown'}",
+                    status="INFO",
+                    details=None
+                )
                 
                 # Process image - this creates a PNG visualization file
                 result = self.analyzer.process_image(filepath)
@@ -321,7 +356,7 @@ class LeafPositionTest(BaseTest):
                 avg_length = sum(detected_lengths) / len(detected_lengths) if detected_lengths else 0
                 detected_field_size = round(avg_length / 10) * 10  # Round to nearest 10mm
                 
-                # File summary result
+                # File summary result - removed to avoid [object Object] display
                 file_status = "PASS" if out_of_tolerance_count == 0 else "FAIL"
                 file_summary = {
                     'file': filename,
@@ -333,12 +368,13 @@ class LeafPositionTest(BaseTest):
                     'average_length_mm': avg_length
                 }
                 
-                self.add_result(
-                    name=f"file_{file_index}_summary",
-                    value=file_summary,
-                    status=file_status,
-                    details=f"[{filename}] Detected field size: ~{detected_field_size}mm - {ok_count}/{total_blades} blades OK"
-                )
+                # Don't add file_summary as a result (causes [object Object] display)
+                # self.add_result(
+                #     name=f"file_{file_index}_summary",
+                #     value=file_summary,
+                #     status=file_status,
+                #     details=f"[{filename}] Detected field size: ~{detected_field_size}mm - {ok_count}/{total_blades} blades OK"
+                # )
                 
                 # Store file-level summary for display
                 self.file_results.append(file_summary)
@@ -362,20 +398,21 @@ class LeafPositionTest(BaseTest):
                 all_out_of_tolerance_count += out_of_tolerance_count
                 all_closed_count += closed_count
             
-            # Overall summary for all files
+            # Overall summary for all files - removed to avoid [object Object] display
             overall_status = "PASS" if all_out_of_tolerance_count == 0 else "FAIL"
-            self.add_result(
-                name="overall_summary",
-                value={
-                    'total_files': len(files),
-                    'total_blades': all_total_blades,
-                    'ok': all_ok_count,
-                    'out_of_tolerance': all_out_of_tolerance_count,
-                    'closed': all_closed_count
-                },
-                status=overall_status,
-                details=f"Total: {all_ok_count}/{all_total_blades} blades OK across {len(files)} file(s)"
-            )
+            # Don't add overall_summary as a result (causes [object Object] display)
+            # self.add_result(
+            #     name="overall_summary",
+            #     value={
+            #         'total_files': len(files),
+            #         'total_blades': all_total_blades,
+            #         'ok': all_ok_count,
+            #         'out_of_tolerance': all_out_of_tolerance_count,
+            #         'closed': all_closed_count
+            #     },
+            #     status=overall_status,
+            #     details=f"Total: {all_ok_count}/{all_total_blades} blades OK across {len(files)} file(s)"
+            # )
             
             # Calculate overall result using BaseTest method
             self.calculate_overall_result()
