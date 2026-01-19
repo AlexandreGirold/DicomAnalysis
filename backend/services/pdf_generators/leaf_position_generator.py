@@ -377,7 +377,7 @@ def add_images_page(data: Dict[str, Any]) -> BytesIO:
     import pydicom
     import os
     
-    # Hardcoded path to the images folder
+    # Hardcoded path to the images folder (TODO: change)
     images_dir = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
         'uploads', 
