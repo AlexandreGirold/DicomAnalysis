@@ -344,10 +344,15 @@ def get_leaf_position_test_by_id(test_id: int) -> Optional[Dict]:
 
 
 def delete_leaf_position_test(test_id: int) -> bool:
-    """Delete a Leaf Position test and all associated blade results"""
+    """Delete a Leaf Position test and all associated blade results and images"""
+    from .weekly_leaf_position_images import LeafPositionImage
+    
     db = SessionLocal()
     try:
-        # Delete associated blade results first
+        # Delete associated images first
+        db.query(LeafPositionImage).filter(LeafPositionImage.test_id == test_id).delete()
+        
+        # Delete associated blade results
         db.query(LeafPositionResult).filter(LeafPositionResult.test_id == test_id).delete()
         
         # Delete test

@@ -24,13 +24,13 @@ def setup_environment():
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Install requirements
-        requirements = os.path.join(backend_dir, 'requirements.txt')
+        requirements = os.path.join('requirements.txt')
         subprocess.run([python_exe, '-m', 'pip', 'install', '-r', requirements],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         
         # Create directories
         os.makedirs(os.path.join(backend_dir, 'data'), exist_ok=True)
-        os.makedirs(os.path.join(backend_dir, 'uploads'), exist_ok=True)
+        # os.makedirs(os.path.join(backend_dir, 'uploads'), exist_ok=True)
         
         print("Installation terminée!")
     
@@ -63,7 +63,7 @@ def start_server_hidden():
         )
         
         # Wait for server to be ready
-        time.sleep(3)
+        time.sleep(5)
         
         # Open browser
         webbrowser.open('http://localhost:8000')

@@ -3,12 +3,11 @@ echo ====================================
 echo Starting TARRA QC Application
 echo ====================================
 
-cd /d "%~dp0backend"
-
-REM Check if virtual environment exists
-if not exist "env\Scripts\activate.bat" (
+REM Check if virtual environment exists in root
+if not exist "%~dp0.venv\Scripts\activate.bat" (
     echo Virtual environment not found. Creating it...
-    python -m venv env
+    cd /d "%~dp0"
+    python -m venv .venv
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
         echo Please make sure Python is installed and in your PATH
@@ -19,14 +18,16 @@ if not exist "env\Scripts\activate.bat" (
 )
 
 echo Activating Python environment...
-call env\Scripts\activate.bat
+call "%~dp0.venv\Scripts\activate.bat"
+
+cd /d "%~dp0backend" 
 
 REM Check if uvicorn is installed
 python -c "import uvicorn" 2>nul
 if errorlevel 1 (
     echo Installing required packages...
     python -m pip install --upgrade pip
-    pip install -r ..\requirements.txt
+    pip install -r "%~dp0requirements.txt"
     if errorlevel 1 (
         echo ERROR: Failed to install requirements
         pause
@@ -48,7 +49,7 @@ echo.
 echo ====================================
 echo Application started!
 echo Backend: http://localhost:8000
-echo Frontend: http://localhost:8000/index.html
+echo Frontend: http://localhost:8000
 echo ====================================
 echo.
 echo Press any key to exit this window...
