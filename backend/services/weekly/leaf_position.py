@@ -363,8 +363,10 @@ class LeafPositionTest(BaseTest):
                 details=f"Total: {all_ok_count}/{all_total_blades} blades OK across {len(files)} file(s)"
             )
             
-            # Calculate overall result using BaseTest method
-            self.calculate_overall_result()
+            # Set overall result directly based on out of tolerance count
+            # This ignores INFO-status results and only looks at actual blade failures
+            self.overall_result = overall_status
+            self.overall_status = overall_status
             
             logger.info(f"Leaf position test completed: {self.overall_result}")
             return self._format_output(notes=notes)

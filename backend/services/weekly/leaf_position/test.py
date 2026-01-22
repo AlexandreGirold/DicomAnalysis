@@ -184,7 +184,7 @@ class LeafPositionTest(BaseTest):
                 # Determine analysis type based on file position
                 analysis_type = self._get_analysis_type(file_index, len(files))
                 
-                # Add image info result - this displays in the results section
+                # Add image info result - displays acquisition date in results section
                 self.add_result(
                     name=f"image_{file_index}_info",
                     value=f"{filename} | Acquisition: {acquisition_date if acquisition_date else 'Unknown'}",
@@ -414,8 +414,10 @@ class LeafPositionTest(BaseTest):
             #     details=f"Total: {all_ok_count}/{all_total_blades} blades OK across {len(files)} file(s)"
             # )
             
-            # Calculate overall result using BaseTest method
-            self.calculate_overall_result()
+            # Set overall result directly based on out of tolerance count
+            # This ignores any INFO-status results and only looks at actual blade failures
+            self.overall_result = overall_status
+            self.overall_status = overall_status
             
             logger.info(f"Leaf position test completed: {self.overall_result}")
             return self._format_output(notes=notes)

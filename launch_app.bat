@@ -39,7 +39,7 @@ if errorlevel 1 (
 echo Starting backend server...
 start "TARRA Backend" cmd /k "uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
 
 echo Opening frontend...
 cd /d "%~dp0frontend"
