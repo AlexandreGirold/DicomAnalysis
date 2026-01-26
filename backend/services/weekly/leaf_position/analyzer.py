@@ -46,7 +46,7 @@ class MLCBladeAnalyzer:
         self.center_u, self.center_v = get_mv_center()
         self.blade_width_pixels = 33.25  # 1 blade = 7.18mm = 33.2 pixels (will be recalculated)
         self.blade_width_iso = 7.18  # mm - blade width at isocenter (FIXED specification)
-        self.testing_folder = testing_folder if testing_folder else r"C:\Users\agirold\Desktop\testing"  # Optional: preset folder path
+        self.testing_folder = testing_folder  # Optional: preset folder path
         self.gui_mode = gui_mode  # Flag to enable/disable GUI dialogs
         
         # DICOM metadata (will be populated when loading image)
@@ -642,7 +642,7 @@ class MLCBladeAnalyzer:
 def main():
     """Main entry point"""
     # Use the testing folder path directly
-    testing_folder = r"c:\Users\agirold\Desktop\testing"
+    testing_folder = None  # Set to your testing folder path if needed
     
     print(f"Using testing folder: {testing_folder}")
     
