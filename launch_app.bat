@@ -25,7 +25,7 @@ REM Check if uvicorn is installed
 python -c "import uvicorn" 2>nul
 if errorlevel 1 (
     echo Installing required packages...
-    python -m pip install --upgrade pip
+    python -m pip install --upgrade pip setuptools wheel
     pip install -r ..\requirements.txt
     if errorlevel 1 (
         echo ERROR: Failed to install requirements

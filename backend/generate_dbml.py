@@ -1,5 +1,6 @@
 """
 Generate DBML representation of the current database schema
+use on dbml website 
 """
 import sqlite3
 import sys

@@ -24,7 +24,7 @@ def setup_environment():
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Install requirements
-        requirements = os.path.join(backend_dir, 'requirements.txt')
+        requirements = os.path.join(script_dir, 'requirements.txt')
         subprocess.run([python_exe, '-m', 'pip', 'install', '-r', requirements],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         
@@ -63,7 +63,7 @@ def start_server_hidden():
         )
         
         # Wait for server to be ready
-        time.sleep(3)
+        time.sleep(5)
         
         # Open browser
         webbrowser.open('http://localhost:8000')
@@ -71,7 +71,9 @@ def start_server_hidden():
         return process
         
     except Exception as e:
-        print(f"Erreur: {e}")
+        print(f"Erreur lors du démarrage du serveur: {e}")
+        import traceback
+        traceback.print_exc()
         input("Appuyez sur Entrée pour fermer...")
         sys.exit(1)
 
