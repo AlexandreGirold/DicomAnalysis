@@ -24,13 +24,13 @@ def setup_environment():
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # Install requirements
-        requirements = os.path.join('requirements.txt')
+        requirements = os.path.join(script_dir, 'requirements.txt')
         subprocess.run([python_exe, '-m', 'pip', 'install', '-r', requirements],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         
         # Create directories
         os.makedirs(os.path.join(backend_dir, 'data'), exist_ok=True)
-        # os.makedirs(os.path.join(backend_dir, 'uploads'), exist_ok=True)
+        os.makedirs(os.path.join(backend_dir, 'uploads'), exist_ok=True)
         
         print("Installation terminée!")
     
@@ -71,7 +71,9 @@ def start_server_hidden():
         return process
         
     except Exception as e:
-        print(f"Erreur: {e}")
+        print(f"Erreur lors du démarrage du serveur: {e}")
+        import traceback
+        traceback.print_exc()
         input("Appuyez sur Entrée pour fermer...")
         sys.exit(1)
 
