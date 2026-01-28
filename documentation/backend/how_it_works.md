@@ -153,7 +153,7 @@ The service layer contains the actual analysis logic:
 
 ### Analysis Services
 - **leaf_pos.py** - MLCBladeAnalyzer class for MLC analysis
-- **leaf_position_identifier.py** - Identifies leaf positions in images
+- **leaf_position_identifier.py** - Identifies leaf positions in images (Exactitude du MLC)
 - **services/weekly/** - Weekly test implementations
 - **services/monthly/** - Monthly test implementations  
 - **services/daily/** - Daily test implementations
@@ -176,7 +176,7 @@ The service layer contains the actual analysis logic:
 - **database/config.py** - Database configuration
 - **database/queries.py** - Complex query operations
 - **database/*_tests.py** - Test-specific database operations
-- **database/weekly_leaf_position_images.py** - Leaf position image management
+- **database/weekly_leaf_position_images.py** - Exactitude du MLC (leaf position) image management
 
 ### Tables Organization
 - Daily tests: `daily_*` tables

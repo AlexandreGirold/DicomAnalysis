@@ -1,4 +1,4 @@
-"""Test script to check if leaf position API query works"""
+"""Test script to check if Exactitude du MLC (leaf position) API query works"""
 import sys
 sys.path.insert(0, '.')
 

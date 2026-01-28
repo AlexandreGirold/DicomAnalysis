@@ -2,7 +2,7 @@
 PDF Report Generator for Trend Analysis
 Generates professional PDF reports with graphs and statistics for quality control tests
 
-For the Leaf Position analysis (not the others)
+For the Exactitude du MLC (Leaf Position) analysis (not the others)
 """
 
 import io
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
     """
-    Generate a comprehensive PDF report for Leaf Position trend analysis using ReportLab
+    Generate a comprehensive PDF report for Exactitude du MLC trend analysis using ReportLab
     
     Args:
         data: Dictionary containing:
@@ -39,7 +39,7 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
     Returns:
         bytes: PDF file content
     """
-    logger.info("[PDF-GENERATOR] Starting PDF generation for Leaf Position trend report")
+    logger.info("[PDF-GENERATOR] Starting PDF generation for Exactitude du MLC trend report")
     
     # Create PDF in memory
     buffer = BytesIO()
@@ -71,7 +71,7 @@ def generate_leaf_position_pdf(data: Dict[str, Any]) -> bytes:
     try:
         # Portrait Section: Title and Summary
         portrait_elements.append(Paragraph("Rapport d'Analyse de Tendances", title_style))
-        portrait_elements.append(Paragraph("Position des Lames", styles['Heading2']))
+        portrait_elements.append(Paragraph("Exactitude du MLC", styles['Heading2']))
         portrait_elements.append(Spacer(1, 0.75*cm))
         
         # Date range

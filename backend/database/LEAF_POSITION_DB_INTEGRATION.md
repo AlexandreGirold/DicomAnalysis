@@ -1,7 +1,7 @@
-# Leaf Position Test - Database Integration Summary
+# Exactitude du MLC (Leaf Position Test) - Database Integration Summary
 
 ## Overview
-Successfully added complete database support for the Leaf Position test, storing detailed blade measurements including positions, lengths, and validation status.
+Successfully added complete database support for the Exactitude du MLC test, storing detailed blade measurements including positions, lengths, and validation status.
 
 ## Database Schema
 

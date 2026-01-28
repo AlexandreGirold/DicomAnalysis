@@ -1,4 +1,4 @@
-# LeafPosition Visualization Fix - Summary
+# Exactitude du MLC (LeafPosition) Visualization Fix - Summary
 
 ## Problem Identified
 Tests 8, 9, and 10 had visualization PNG files saved to disk but the `visualization_paths` field in the database was NULL, causing images not to display in the result pages.

@@ -33,7 +33,8 @@ WEEKLY_TESTS = {
     'leaf_position': {
         'class': LeafPositionTest,
         'function': test_leaf_position,
-        'description': 'Détection automatique des positions et longueurs des lames MLC',
+        'name': 'Exactitude du MLC',
+        'description': 'Exactitude du positionnement des lames',
         'category': 'weekly'
     },
     'mvic': {

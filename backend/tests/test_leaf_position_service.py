@@ -16,7 +16,7 @@ if not dicom_files:
 print(f"Found {len(dicom_files)} DICOM files")
 print(f"Using: {dicom_files[0]}")
 
-# Test the leaf position service
+# Test the Exactitude du MLC (leaf position) service
 from services.weekly.leaf_position import LeafPositionTest
 from datetime import datetime
 
