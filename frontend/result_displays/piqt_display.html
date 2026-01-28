@@ -226,6 +226,7 @@
                 <option value="">Loading tests...</option>
             </select>
             <button onclick="loadSelectedTest()">Display Test</button>
+            <button onclick="downloadPDF()" id="downloadPdfBtn" style="display:none;">📄 Télécharger PDF</button>
             <button onclick="window.location.href='review.html'">Back to Review</button>
         </div>
         
@@ -234,6 +235,23 @@
 
     <script>
         const API_BASE_URL = 'http://localhost:8000';
+        let currentTestId = null;
+        
+        // Télécharger le PDF pour le test actuel
+        async function downloadPDF() {
+            if (!currentTestId) {
+                alert('Aucun test sélectionné');
+                return;
+            }
+            
+            try {
+                const url = `${API_BASE_URL}/reports/piqt-test/${currentTestId}/pdf`;
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error('Erreur lors du téléchargement du PDF:', error);
+                alert('Erreur lors du téléchargement du PDF');
+            }
+        }
         
         // Load available tests on page load
         async function loadAvailableTests() {
@@ -272,6 +290,10 @@
         async function displayTest(testId) {
             const container = document.getElementById('resultContainer');
             container.innerHTML = '<div class="loading">Loading test result...</div>';
+            
+            // Mettre à jour l'ID du test actuel et afficher le bouton PDF
+            currentTestId = testId;
+            document.getElementById('downloadPdfBtn').style.display = 'inline-block';
             
             try {
                 const response = await fetch(`${API_BASE_URL}/display/piqt/${testId}`);

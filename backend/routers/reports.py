@@ -293,3 +293,182 @@ async def generate_mlc_blade_compliance_report(
     except Exception as e:
         logger.error(f"[MLC-BLADE-REPORT] Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+
+
+@router.get("/piqt-test/{test_id}/pdf")
+async def get_piqt_test_pdf(test_id: int):
+    """
+    Génère un rapport PDF pour un test PIQT individuel
+    
+    Args:
+        test_id: ID du test PIQT
+        
+    Returns:
+        PDF avec les résultats du test PIQT
+    """
+    try:
+        logger.info(f"[PIQT-PDF] Génération du rapport PDF pour le test PIQT ID: {test_id}")
+        
+        # Récupérer les données du test
+        session = SessionLocal()
+        try:
+            test = session.query(db.PIQTTest).filter(db.PIQTTest.id == test_id).first()
+            
+            if not test:
+                raise HTTPException(status_code=404, detail=f"Test PIQT avec l'ID {test_id} introuvable")
+            
+            # Préparer les données pour le générateur PDF
+            test_data = {
+                'test_date': test.test_date.isoformat() if test.test_date else None,
+                'operator': test.operator,
+                'overall_result': test.overall_result,
+                'snr_value': test.snr_value,
+                'uniformity_value': test.uniformity_value,
+                'ghosting_value': test.ghosting_value,
+                'results_json': test.results_json,
+                'notes': test.notes
+            }
+            
+            # Générer le PDF
+            from services.pdf_generators.piqt_generator import generate_piqt_pdf
+            pdf_bytes = generate_piqt_pdf(test_data)
+            
+            # Créer le nom de fichier
+            test_date_str = test.test_date.strftime('%Y%m%d') if test.test_date else 'unknown'
+            filename = f"piqt_test_{test_date_str}_{test_id}.pdf"
+            
+            logger.info(f"[PIQT-PDF] Rapport PDF généré avec succès: {filename}")
+            
+            return Response(
+                content=pdf_bytes,
+                media_type='application/pdf',
+                headers={
+                    'Content-Disposition': f'attachment; filename="{filename}"'
+                }
+            )
+            
+        finally:
+            session.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PIQT-PDF] Erreur: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Échec de la génération du rapport: {str(e)}")
+
+
+@router.get("/piqt-trend")
+async def get_piqt_trend(
+    start_date: str = Query(..., description="Date de début au format YYYY-MM-DD"),
+    end_date: str = Query(..., description="Date de fin au format YYYY-MM-DD"),
+    format: str = Query("json", description="Format de réponse: 'json' ou 'pdf'")
+):
+    """
+    Obtenir l'analyse de tendances pour les tests PIQT sur une plage de dates
+    
+    Returns:
+    - format=json: JSON avec les métadonnées des tests
+    - format=pdf: Rapport PDF avec graphiques et analyse
+    """
+    try:
+        # Analyser les dates
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        
+        if start_datetime > end_datetime:
+            raise HTTPException(status_code=400, detail="La date de début doit être antérieure à la date de fin")
+        
+        logger.info(f"[PIQT-TREND] Requête des tests PIQT du {start_date} au {end_date}")
+        
+        # Requête en base de données
+        session = SessionLocal()
+        try:
+            tests = session.query(db.PIQTTest).filter(
+                and_(
+                    db.PIQTTest.test_date >= start_datetime,
+                    db.PIQTTest.test_date <= end_datetime
+                )
+            ).order_by(db.PIQTTest.test_date.asc()).all()
+            
+            logger.info(f"[PIQT-TREND] Trouvé {len(tests)} tests")
+            
+            if not tests:
+                logger.warning(f"[PIQT-TREND] Aucun test trouvé pour la plage de dates {start_date} à {end_date}")
+                return JSONResponse({
+                    'tests': [],
+                    'date_range': {'start': start_date, 'end': end_date},
+                    'summary': {
+                        'total_tests': 0,
+                        'passed_tests': 0,
+                        'failed_tests': 0,
+                        'success_rate': 0
+                    }
+                })
+            
+            # Préparer les données
+            tests_data = []
+            passed_count = 0
+            failed_count = 0
+            
+            for test in tests:
+                test_dict = {
+                    'id': test.id,
+                    'test_date': test.test_date.isoformat() if test.test_date else None,
+                    'operator': test.operator,
+                    'overall_result': test.overall_result,
+                    'snr_value': test.snr_value,
+                    'uniformity_value': test.uniformity_value,
+                    'ghosting_value': test.ghosting_value,
+                    'notes': test.notes
+                }
+                tests_data.append(test_dict)
+                
+                if test.overall_result == 'PASS':
+                    passed_count += 1
+                elif test.overall_result == 'FAIL':
+                    failed_count += 1
+            
+            # Calculer les statistiques
+            total_tests = len(tests)
+            success_rate = (passed_count / total_tests * 100) if total_tests > 0 else 0
+            
+            response_data = {
+                'tests': tests_data,
+                'date_range': {
+                    'start': start_date,
+                    'end': end_date
+                },
+                'summary': {
+                    'total_tests': total_tests,
+                    'passed_tests': passed_count,
+                    'failed_tests': failed_count,
+                    'success_rate': success_rate
+                }
+            }
+            
+            if format == 'pdf':
+                # Générer le rapport PDF
+                from services.pdf_generators.piqt_generator import generate_piqt_trend_pdf
+                pdf_bytes = generate_piqt_trend_pdf(response_data)
+                
+                return Response(
+                    content=pdf_bytes,
+                    media_type='application/pdf',
+                    headers={
+                        'Content-Disposition': f'attachment; filename="piqt_trend_{start_date}_{end_date}.pdf"'
+                    }
+                )
+            else:
+                # Retourner JSON
+                return JSONResponse(response_data)
+                
+        finally:
+            session.close()
+            
+    except ValueError as e:
+        logger.error(f"[PIQT-TREND] Erreur d'analyse de date: {e}")
+        raise HTTPException(status_code=400, detail=f"Format de date invalide: {str(e)}")
+    except Exception as e:
+        logger.error(f"[PIQT-TREND] Erreur: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+

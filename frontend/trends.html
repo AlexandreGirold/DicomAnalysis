@@ -283,7 +283,7 @@
                                 <option value="mlc_leaf_jaw" disabled>MLC Leaf & Jaw (bientôt disponible)</option>
                                 <option value="mvic" disabled>MVIC (bientôt disponible)</option>
                                 <option value="mvic_fente_v2" disabled>MVIC Fente (bientôt disponible)</option>
-                                <option value="piqt" disabled>PIQT (bientôt disponible)</option>
+                                <option value="piqt">PIQT</option>
                                 <option value="leaf_position">Position des Lames</option>
                             </optgroup>
                             <!-- Monthly -->
@@ -305,17 +305,9 @@
                     <label for="endDateInput">Date de Fin</label>
                     <input type="date" id="endDateInput">
                 </div>
+            </div>
 
-                <div class="filter-group">
-                    <label for="bladeSizeSelect">Taille des Lames (Rapport PDF)</label>
-                    <select id="bladeSizeSelect">
-                        <option value="all">Toutes les tailles</option>
-                        <option value="20mm">20mm</option>
-                        <option value="30mm">30mm</option>
-                        <option value="40mm">40mm</option>
-                    </select>
-                </div>
-            </div>                <div class="action-buttons">
+            <div class="action-buttons">
                     <button class="btn btn-primary" id="loadPreviewBtn" onclick="loadPreview()">
                         📈 Charger l'Aperçu
                     </button>

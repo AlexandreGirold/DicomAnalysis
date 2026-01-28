@@ -98,6 +98,7 @@ async function loadPreview() {
 function getEndpointForTestType(testType) {
     const endpoints = {
         'leaf_position': '/reports/leaf-position-trend',
+        'piqt': '/reports/piqt-trend',
         'mvic_fente': '/reports/mvic-fente-trend',
         'mlc_leaf_jaw': '/reports/mlc-leaf-jaw-trend'
     };
@@ -210,14 +211,17 @@ function displayTestList(tests) {
         const row = tbody.insertRow();
         row.style.cursor = 'pointer';
         
+        // Support both test_id and id field names
+        const testId = test.test_id || test.id;
+        
         // Add click handler to open test detail page
         row.addEventListener('click', () => {
-            openTestDetail(test.test_id, testType);
+            openTestDetail(testId, testType);
         });
         
         // ID
         const idCell = row.insertCell();
-        idCell.textContent = `#${test.test_id}`;
+        idCell.textContent = `#${testId}`;
         idCell.style.fontWeight = 'bold';
         idCell.style.color = '#1976d2';
         
@@ -304,6 +308,30 @@ async function generatePDF() {
             url = `${window.APP_CONFIG.API_BASE_URL}/reports/leaf-position-trend?start_date=${startDate}&end_date=${endDate}&format=pdf`;
             filename = `leaf_position_trend_${startDate}_${endDate}.pdf`;
             console.log('Generating LeafPosition trend PDF from:', url);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            // Download PDF
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+            
+        } else if (testType === 'piqt') {
+            // Use the piqt-trend endpoint with format=pdf
+            url = `${window.APP_CONFIG.API_BASE_URL}/reports/piqt-trend?start_date=${startDate}&end_date=${endDate}&format=pdf`;
+            filename = `piqt_trend_${startDate}_${endDate}.pdf`;
+            console.log('Generating PIQT trend PDF from:', url);
             
             const response = await fetch(url);
             
