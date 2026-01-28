@@ -97,7 +97,7 @@ class MVICChampTest(BaseTest):
             if image_array is None:
                 return None
             
-            img_8bit, clahe_img, laplacian_sharpened = self.shape_validator.preprocess_image(image_array)
+            img_8bit, clahe_img = self.shape_validator.preprocess_image(image_array)
             
             # Detect contours and edges
             contours, binary_image = self.shape_validator.detect_field_contours(clahe_img)
