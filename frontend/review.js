@@ -18,7 +18,7 @@ const TEST_DISPLAY_NAMES = {
     'niveau_helium': 'Niveau Helium',
     'mlc_leaf_jaw': 'MLC Leaf & Jaw',
     'mvic': 'MVIC',
-    'mvic_fente_v2': 'MVIC Fente',
+    'mvic_fente_v2': 'Précision du MLC',
     'leaf_position': 'Exactitude du MLC',
     'piqt': 'PIQT',
     'position_table_v2': 'Position Table V2',
