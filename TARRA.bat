@@ -1,7 +1,9 @@
 @echo off
 
+set PYTHON_EXE=%~dp0python\python.exe
+
 :: Check if Python is installed
-python --version >nul 2>&1
+"%PYTHON_EXE%" --version >nul 2>&1
 if errorlevel 1 (
     msg * "Python n'est pas installe! Contactez le support technique."
     exit /b 1
@@ -12,7 +14,7 @@ cd /d "%~dp0backend"
 
 :: First time setup (silent)
 if not exist "env\Scripts\python.exe" (
-    python -m venv env
+    "%PYTHON_EXE%" -m venv env
     env\Scripts\python.exe -m pip install --upgrade pip --quiet
     env\Scripts\python.exe -m pip install -r requirements.txt --quiet
     if not exist "data" mkdir data
