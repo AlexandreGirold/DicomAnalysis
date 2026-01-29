@@ -1,5 +1,38 @@
 # How the Application Works
 
+## Test Identifiers Reference
+
+This table maps all tests across the application layers:
+
+### Daily Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `safety_systems` | `daily_safety_systems` | `SafetySystemsTest` | Systèmes de Sécurité |
+
+### Weekly Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `niveau_helium` | `weekly_niveau_helium` | `NiveauHeliumTest` | Niveau Helium |
+| `mlc_leaf_jaw` | `weekly_mlc_leaf_jaw` | `MLCLeafJawTest` | MLC Leaf & Jaw |
+| `leaf_position` | `weekly_leaf_position` | `LeafPositionTest` | Exactitude du MLC |
+| `mvic` | `weekly_mvic` | `MVICTest` | Forme et taille champs |
+| `mvic_fente_v2` | `weekly_mvic_fente_v2` | `MVICFenteV2Test` | Précision du MLC |
+| `piqt` | `weekly_piqt` | `PIQTTest` | PIQT |
+
+### Monthly Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `position_table_v2` | `monthly_position_table_v2` | `PositionTableV2Test` | Position Table V2 |
+| `alignement_laser` | `monthly_alignement_laser` | `AlignementLaserTest` | Alignement Laser |
+| `quasar` | `monthly_quasar` | `QuasarTest` | Quasar |
+| `indice_quality` | `monthly_indice_quality` | `IndiceQualityTest` | Indice Quality |
+
+**Usage Notes:**
+- **Backend ID**: Used in API endpoints (e.g., `/execute/mvic`, `/mvic-sessions`)
+- **Database Table**: SQLite table name where test records are stored
+- **Model Class**: SQLAlchemy ORM class in `backend/database/*_tests.py`
+- **Display Name**: User-facing name shown in frontend interface
+
 ## Application Flow
 
 ### 1. Launch

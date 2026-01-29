@@ -99,6 +99,7 @@ function getEndpointForTestType(testType) {
     const endpoints = {
         'leaf_position': '/reports/leaf-position-trend',
         'piqt': '/reports/piqt-trend',
+        'niveau_helium': '/reports/niveau-helium-trend',
         'mvic_fente': '/reports/mvic-fente-trend',
         'mlc_leaf_jaw': '/reports/mlc-leaf-jaw-trend'
     };
@@ -332,6 +333,30 @@ async function generatePDF() {
             url = `${window.APP_CONFIG.API_BASE_URL}/reports/piqt-trend?start_date=${startDate}&end_date=${endDate}&format=pdf`;
             filename = `piqt_trend_${startDate}_${endDate}.pdf`;
             console.log('Generating PIQT trend PDF from:', url);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            // Download PDF
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+            
+        } else if (testType === 'niveau_helium') {
+            // Use the niveau-helium-trend endpoint with format=pdf
+            url = `${window.APP_CONFIG.API_BASE_URL}/reports/niveau-helium-trend?start_date=${startDate}&end_date=${endDate}&format=pdf`;
+            filename = `niveau_helium_trend_${startDate}_${endDate}.pdf`;
+            console.log('Generating Niveau Helium trend PDF from:', url);
             
             const response = await fetch(url);
             
