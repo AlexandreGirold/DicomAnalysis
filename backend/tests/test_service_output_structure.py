@@ -1,5 +1,5 @@
 """
-Simple diagnostic: verify that the leaf_position service generates blade_results
+Simple diagnostic: verify that the Exactitude du MLC (leaf_position) service generates blade_results
 """
 import sys
 import os

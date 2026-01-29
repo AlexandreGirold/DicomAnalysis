@@ -71,7 +71,7 @@ class FieldShapeValidator:
             return None, None, None
     
     def preprocess_image(self, image_array):
-        """Preprocess image with normalization, CLAHE, and Laplacian sharpening."""
+        """Preprocess image with normalization and CLAHE."""
         # Normalize to 0-1 range
         normalized_img = (image_array - image_array.min()) / (image_array.max() - image_array.min())
         
@@ -82,19 +82,18 @@ class FieldShapeValidator:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         clahe_img = clahe.apply(img_8bit)
         
-        # Apply Laplacian sharpening
-        laplacian_kernel = np.array([[0, -1, 0],
-                                     [-1, 5, -1],
-                                     [0, -1, 0]], dtype=np.float32)
-        laplacian_sharpened = cv2.filter2D(clahe_img, -1, laplacian_kernel)
-        laplacian_sharpened = np.clip(laplacian_sharpened, 0, 255).astype(np.uint8)
-        
-        return img_8bit, clahe_img, laplacian_sharpened
+        return img_8bit, clahe_img
     
     def detect_field_contours(self, clahe_img):
-        """Detect field contours using thresholding and morphological operations."""
-        # Create binary image
-        _, binary_image = cv2.threshold(clahe_img, self.tolerance_threshold, 255, cv2.THRESH_BINARY_INV)
+        """Detect field contours using Otsu thresholding and morphological operations."""
+        # Create binary image using Otsu's method (automatic threshold calculation)
+        # Otsu finds the optimal threshold by maximizing inter-class variance
+        _, binary_image = cv2.threshold(
+            clahe_img, 
+            0,  # Threshold value (ignored with THRESH_OTSU)
+            255, 
+            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+        )
         
         # Apply morphological operations
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, 
@@ -509,7 +508,7 @@ class FieldShapeValidator:
             return None
         
         # Preprocess image
-        img_8bit, clahe_img, laplacian_sharpened = self.preprocess_image(image_array)
+        img_8bit, clahe_img = self.preprocess_image(image_array)
         print("✓ Preprocessing: Normalization → CLAHE → Laplacian Sharpening")
         
         # Detect contours

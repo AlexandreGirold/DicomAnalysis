@@ -1,4 +1,4 @@
-# Leaf Position Analysis Package
+# Exactitude du MLC (Leaf Position Analysis) Package
 
 This package provides MLC (Multi-Leaf Collimator) blade position detection and analysis from DICOM images.
 

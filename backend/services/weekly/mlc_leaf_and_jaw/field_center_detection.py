@@ -84,11 +84,15 @@ class FieldCenterDetector:
     
     def detect_field_contours(self, clahe_img):
         """
-        Detect field contours using thresholding and morphological operations.
-        Follows notebook Section 4: Contour Detection.
+        Detect field contours using Otsu thresholding and morphological operations.
         """
-        # Create binary image
-        _, binary_image = cv2.threshold(clahe_img, self.tolerance_threshold, 255, cv2.THRESH_BINARY_INV)
+        # Create binary image using Otsu's method (automatic threshold calculation)
+        _, binary_image = cv2.threshold(
+            clahe_img, 
+            0,  # Threshold value (ignored with THRESH_OTSU)
+            255, 
+            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+        )
         
         # Apply morphological operations to clean up regions
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, 

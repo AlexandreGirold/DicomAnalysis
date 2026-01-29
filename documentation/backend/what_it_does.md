@@ -16,7 +16,7 @@ Quick reference for what each file does in the backend.
 - **config.py** - SQLAlchemy database configuration and Base model
 - **queries.py** - Common database query functions
 - **daily_tests.py** - Database models for daily QC tests (Safety Systems)
-- **weekly_tests.py** - Database models for weekly QC tests (MVIC, MLC, PIQT, Helium, Leaf Position)
+- **weekly_tests.py** - Database models for weekly QC tests (MVIC, MLC, PIQT, Helium, Exactitude du MLC)
 - **monthly_tests.py** - Database models for monthly QC tests (Position Table, Laser, Quasar, Indice Quality)
 - **mlc_curie.py** - MLC blade analysis and validation functions
 

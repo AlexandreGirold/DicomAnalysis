@@ -87,10 +87,15 @@ class LeafAlignmentAnalyzer:
     
     def detect_field_contours(self, clahe_img):
         """
-        Détecter les contours du champ en utilisant la même méthode que field_edge_detection.py
+        Détecter les contours du champ en utilisant le seuillage Otsu
         """
-        # Créer une image binaire
-        _, binary_image = cv2.threshold(clahe_img, self.tolerance_threshold, 255, cv2.THRESH_BINARY_INV)
+        # Créer une image binaire en utilisant la méthode d'Otsu (calcul automatique du seuil)
+        _, binary_image = cv2.threshold(
+            clahe_img, 
+            0,  # Valeur de seuil (ignorée avec THRESH_OTSU)
+            255, 
+            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+        )
         
         # Appliquer des opérations morphologiques pour nettoyer les régions
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, 

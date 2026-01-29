@@ -582,8 +582,8 @@ async function saveMLCTestToDatabase() {
         // Get test type name for display
         const testTypeNames = {
             'mvic': 'MVIC',
-            'mvic_fente': 'MVIC Fente',
-            'mvic_fente_v2': 'MVIC Fente',
+            'mvic_fente': 'Précision du MLC',
+            'mvic_fente_v2': 'Précision du MLC',
             'mlc_leaf_jaw': 'MLC Leaf Jaw',
             'niveau_helium': 'Niveau Helium',
             'piqt': 'PIQT',

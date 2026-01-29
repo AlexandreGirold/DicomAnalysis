@@ -61,6 +61,7 @@ def get_available_tests():
     """
     return {
         test_id: {
+            'name': test_info.get('name', test_info['class'].__name__.replace('Test', '')),
             'description': test_info['description'],
             'class_name': test_info['class'].__name__,
             'category': test_info.get('category', 'basic')

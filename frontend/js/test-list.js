@@ -62,7 +62,7 @@ function displayTestList(tests) {
                     <div class="test-category-items">
                         ${testItems.map(({ id, info }) => `
                             <div class="test-item" onclick="openTest('${id}')">
-                                <span class="test-name">${info.class_name.replace('Test', '')}</span>
+                                <span class="test-name">${info.name || info.class_name.replace('Test', '')}</span>
                                 <span class="test-description">${info.description}</span>
                             </div>
                         `).join('')}

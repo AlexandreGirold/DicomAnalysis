@@ -1,5 +1,5 @@
 """
-Leaf Position Image Identification
+Exactitude du MLC - Leaf Position Image Identification
 Identifies which reference profile (1-6) each image matches based on blade averages
 """
 import logging

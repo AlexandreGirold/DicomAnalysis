@@ -1,5 +1,5 @@
 """
-Test script to verify leaf position blade data is saved correctly
+Test script to verify Exactitude du MLC (leaf position) blade data is saved correctly
 """
 import sys
 import os
@@ -70,7 +70,7 @@ file_results = [
 ]
 
 print("=" * 60)
-print("Testing Leaf Position Blade Data Save")
+print("Testing Exactitude du MLC (Leaf Position) Blade Data Save")
 print("=" * 60)
 
 # Save test to database

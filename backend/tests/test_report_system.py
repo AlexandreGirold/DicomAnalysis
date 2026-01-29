@@ -33,16 +33,16 @@ def test_get_tests():
     """Test 2: Récupérer la liste des tests"""
     print("\n🔍 Test 2: Récupération des tests...")
     try:
-        # Tester Leaf Position
+        # Tester Exactitude du MLC (Leaf Position)
         response = requests.get(f"{API_URL}/leaf-position-sessions?limit=5")
         if response.status_code == 200:
             tests = response.json()
-            print(f"✅ {len(tests)} tests Leaf Position trouvés")
+            print(f"✅ {len(tests)} tests Exactitude du MLC trouvés")
             if tests:
                 print(f"   Premier test: ID={tests[0]['id']}, Date={tests[0]['test_date']}")
                 return tests[0]['id']  # Retourner le premier ID
             else:
-                print("⚠️  Aucun test Leaf Position trouvé")
+                print("⚠️  Aucun test Exactitude du MLC trouvé")
                 
                 # Essayer MLC tests
                 response = requests.get(f"{API_URL}/mlc-test-sessions?limit=5")
@@ -188,7 +188,7 @@ def main():
     test_id = test_get_tests()
     if not test_id:
         print("\n❌ Tests arrêtés - aucun test trouvé dans la base")
-        print("   Exécutez d'abord des tests MLC ou Leaf Position")
+        print("   Exécutez d'abord des tests MLC ou Exactitude du MLC")
         sys.exit(1)
     
     # Test 3: Détails du test
