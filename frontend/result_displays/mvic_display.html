@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MVIC-Champ Test Result Display</title>
+    <title>Forme et taille champs - Affichage Résultats</title>
     <link rel="stylesheet" href="../styles.css">
     <style>
         .result-container {
@@ -235,7 +235,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>MVIC-Champ Test Result Viewer</h1>
+        <h1>Forme et taille champs - Visualisation Résultats</h1>
         
         <div class="test-selector">
             <label for="testSelect">Select a test to display:</label>
@@ -356,52 +356,6 @@
                             <div class="value">${data.filenames.join(', ')}</div>
                         </div>
                     ` : ''}
-                    
-                    <div class="summary-section">
-                        <h2>Image Analysis Results (5 Images)</h2>
-                        <div class="images-grid">
-            `;
-            
-            // Add all 5 image cards
-            data.images.forEach((img, index) => {
-                // Try to get detailed measurements from file_results
-                let fileResult = null;
-                if (data.file_results && data.file_results[index]) {
-                    fileResult = data.file_results[index];
-                }
-                
-                html += `
-                    <div class="image-card">
-                        <h3>Image ${img.number}</h3>
-                        ${fileResult && fileResult.filename ? `
-                            <div class="data-item">
-                                <span class="label">File:</span>
-                                <span class="value" style="font-size: 0.85em;">${fileResult.filename}</span>
-                            </div>
-                        ` : ''}
-                        <div class="data-item">
-                            <span class="label">Width:</span>
-                            <span class="value">${fmt(img.width_mm)} mm</span>
-                        </div>
-                        <div class="data-item">
-                            <span class="label">Height:</span>
-                            <span class="value">${fmt(img.height_mm)} mm</span>
-                        </div>
-                        <div class="data-item">
-                            <span class="label">Avg Angle:</span>
-                            <span class="value">${fmt(img.avg_angle)}°</span>
-                        </div>
-                        <div class="data-item">
-                            <span class="label">Angle Std Dev:</span>
-                            <span class="value">${fmt(img.angle_std_dev)}°</span>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            html += `
-                        </div>
-                    </div>
             `;
             
             // Add visualizations if available

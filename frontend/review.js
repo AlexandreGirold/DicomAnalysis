@@ -17,7 +17,7 @@ const TEST_DISPLAY_NAMES = {
     'safety_systems': 'Safety Systems',
     'niveau_helium': 'Niveau Helium',
     'mlc_leaf_jaw': 'MLC Leaf & Jaw',
-    'mvic': 'MVIC',
+    'mvic': 'Forme et taille champs',
     'mvic_fente_v2': 'Précision du MLC',
     'leaf_position': 'Exactitude du MLC',
     'piqt': 'PIQT',
@@ -354,9 +354,9 @@ function displayTestDetail(test) {
     
     // Display based on test type
     if (test.test_type === 'mvic') {
-        // MVIC-Champ test display
+        // Forme et taille champs test display
         summaryCard.innerHTML = `
-            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats MVIC-Champ</h3>
+            <h3 style="font-size: 0.90em !important; margin-bottom: 1px;">Résultats Forme et taille champs</h3>
             <div class="summary-grid" style="font-size: 1.1em !important; gap: 1px; line-height: 1.0;">
                 <div class="summary-item" style="padding: 6px; padding-left: 8px; padding-bottom: 6px;">
                     <span class="label">Image 1:</span>
@@ -386,11 +386,11 @@ function displayTestDetail(test) {
             ${test.notes ? `<div style="font-size: 0.70em !important; margin-top: 2px;"><strong>Notes :</strong> ${test.notes}</div>` : ''}
             <div style="margin-top: 10px; font-size: 0.85em;">
                 <a href="result_displays/mvic_display.html?id=${test.id}" target="_blank" style="color: #007bff; text-decoration: none;">
-                    📊 View Full MVIC-Champ Report →
+                    📊 View Full Forme et taille champs Report →
                 </a>
             </div>
         `;
-        // Hide visualizations and results table for MVIC-Champ tests
+        // Hide visualizations and results table for Forme et taille champs tests
         document.querySelector('.visualization-section').style.display = 'none';
         document.querySelector('.results-table-section').style.display = 'none';
     } else if (test.test_type === 'piqt') {

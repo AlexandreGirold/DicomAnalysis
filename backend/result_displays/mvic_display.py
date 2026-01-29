@@ -60,7 +60,7 @@ def display_mvic_result(test_id: int) -> Optional[Dict]:
     # Format the output
     output = {
         'test_id': test_data['id'],
-        'test_name': 'MVIC-Champ Test',
+        'test_name': 'Forme et taille champs',
         'test_date': test_data['test_date'],
         'operator': test_data['operator'],
         'upload_date': test_data['upload_date'],
