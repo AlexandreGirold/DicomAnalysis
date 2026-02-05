@@ -1,5 +1,38 @@
 # How the Application Works
 
+## Test Identifiers Reference
+
+This table maps all tests across the application layers:
+
+### Daily Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `safety_systems` | `daily_safety_systems` | `SafetySystemsTest` | Systèmes de Sécurité |
+
+### Weekly Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `niveau_helium` | `weekly_niveau_helium` | `NiveauHeliumTest` | Niveau Helium |
+| `mlc_leaf_jaw` | `weekly_mlc_leaf_jaw` | `MLCLeafJawTest` | MLC Leaf & Jaw |
+| `leaf_position` | `weekly_leaf_position` | `LeafPositionTest` | Exactitude du MLC |
+| `mvic` | `weekly_mvic` | `MVICTest` | Forme et taille champs |
+| `mvic_fente_v2` | `weekly_mvic_fente_v2` | `MVICFenteV2Test` | Précision du MLC |
+| `piqt` | `weekly_piqt` | `PIQTTest` | PIQT |
+
+### Monthly Tests
+| Backend ID | Database Table | Model Class | Display Name |
+|------------|----------------|-------------|--------------|
+| `position_table_v2` | `monthly_position_table_v2` | `PositionTableV2Test` | Position Table V2 |
+| `alignement_laser` | `monthly_alignement_laser` | `AlignementLaserTest` | Alignement Laser |
+| `quasar` | `monthly_quasar` | `QuasarTest` | Quasar |
+| `indice_quality` | `monthly_indice_quality` | `IndiceQualityTest` | Indice Quality |
+
+**Usage Notes:**
+- **Backend ID**: Used in API endpoints (e.g., `/execute/mvic`, `/mvic-sessions`)
+- **Database Table**: SQLite table name where test records are stored
+- **Model Class**: SQLAlchemy ORM class in `backend/database/*_tests.py`
+- **Display Name**: User-facing name shown in frontend interface
+
 ## Application Flow
 
 ### 1. Launch
@@ -153,7 +186,7 @@ The service layer contains the actual analysis logic:
 
 ### Analysis Services
 - **leaf_pos.py** - MLCBladeAnalyzer class for MLC analysis
-- **leaf_position_identifier.py** - Identifies leaf positions in images
+- **leaf_position_identifier.py** - Identifies leaf positions in images (Exactitude du MLC)
 - **services/weekly/** - Weekly test implementations
 - **services/monthly/** - Monthly test implementations  
 - **services/daily/** - Daily test implementations
@@ -176,7 +209,7 @@ The service layer contains the actual analysis logic:
 - **database/config.py** - Database configuration
 - **database/queries.py** - Complex query operations
 - **database/*_tests.py** - Test-specific database operations
-- **database/weekly_leaf_position_images.py** - Leaf position image management
+- **database/weekly_leaf_position_images.py** - Exactitude du MLC (leaf position) image management
 
 ### Tables Organization
 - Daily tests: `daily_*` tables

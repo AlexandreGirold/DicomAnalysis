@@ -3,12 +3,14 @@ echo ====================================
 echo Starting TARRA QC Application
 echo ====================================
 
+set PYTHON_EXE=%~dp0python\python.exe
+
 cd /d "%~dp0backend"
 
 REM Check if virtual environment exists
 if not exist "env\Scripts\activate.bat" (
     echo Virtual environment not found. Creating it...
-    python -m venv env
+    "%PYTHON_EXE%" -m venv env
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
         echo Please make sure Python is installed and in your PATH

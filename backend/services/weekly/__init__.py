@@ -33,12 +33,14 @@ WEEKLY_TESTS = {
     'leaf_position': {
         'class': LeafPositionTest,
         'function': test_leaf_position,
-        'description': 'Détection automatique des positions et longueurs des lames MLC',
+        'name': 'Exactitude du MLC',
+        'description': 'Exactitude du positionnement des lames',
         'category': 'weekly'
     },
     'mvic': {
         'class': MVICChampTest,
         'function': test_mvic,
+        'name': 'Forme et taille champs',
         'description': 'MVIC-Champ - MV Imaging Check - Validation taille et forme du champ (±1mm, 90° ±1°)',
         'category': 'weekly'
     },
@@ -51,7 +53,8 @@ WEEKLY_TESTS = {
     'mvic_fente_v2': {
         'class': MVICFenteTest,
         'function': test_mvic_fente_v2,
-        'description': 'MVIC Fente - Détection par contours (méthode ImageJ) - Largeur et espacement',
+        'name': 'Précision du MLC',
+        'description': 'Précision du positionnement des lames en mode statique',
         'category': 'weekly'
     }
 }

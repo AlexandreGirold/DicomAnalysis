@@ -3,12 +3,16 @@ import subprocess
 import sys
 import os
 
+# Use local Python installation
+script_dir = os.path.dirname(os.path.abspath(__file__))
+local_python = os.path.join(script_dir, 'python', 'python.exe')
+
 # Try to import psutil, install if missing
 try:
     import psutil
 except ImportError:
     print("Installation de psutil...")
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'psutil'])
+    subprocess.check_call([local_python, '-m', 'pip', 'install', 'psutil'])
     import psutil
 
 def stop_server():

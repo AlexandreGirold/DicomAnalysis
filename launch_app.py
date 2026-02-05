@@ -12,12 +12,15 @@ def setup_environment():
     env_dir = os.path.join(backend_dir, 'env')
     python_exe = os.path.join(env_dir, 'Scripts', 'python.exe')
     
+    # Use local Python installation
+    local_python = os.path.join(script_dir, 'python', 'python.exe')
+    
     # Check if environment exists
     if not os.path.exists(python_exe):
         print("Première installation... Veuillez patienter...")
         
         # Create virtual environment
-        subprocess.run([sys.executable, '-m', 'venv', env_dir], cwd=backend_dir, check=True)
+        subprocess.run([local_python, '-m', 'venv', env_dir], cwd=backend_dir, check=True)
         
         # Upgrade pip
         subprocess.run([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip'], 

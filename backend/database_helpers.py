@@ -249,7 +249,7 @@ def save_leaf_position_to_database(
     visualization_paths: Optional[List[str]] = None
 ) -> int:
     """
-    Save Leaf Position test results to database
+    Save Exactitude du MLC test results to database
     
     Args:
         operator: Name of operator
@@ -371,12 +371,12 @@ def save_leaf_position_to_database(
             logger.warning(f"[SAVE-LEAF] Unexpected results type: {type(results)}")
         
         db.commit()
-        logger.info(f"✓ Saved Leaf Position test to database (ID: {test.id})")
+        logger.info(f"✓ Saved Exactitude du MLC test to database (ID: {test.id})")
         return test.id
         
     except Exception as e:
         db.rollback()
-        logger.error(f"Error saving Leaf Position test to database: {e}")
+        logger.error(f"Error saving Exactitude du MLC test to database: {e}")
         raise
     finally:
         db.close()
